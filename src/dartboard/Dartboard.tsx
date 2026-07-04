@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { BoardThrow } from './dartboard.types'
 import { RING_RADII, SEGMENT_ORDER, describeAnnulusSector, polarToCartesian, wedgeAngles } from './geometry'
 import { resolvePoint } from './hitTest'
@@ -21,10 +21,21 @@ const RIM_COLOR = '#111111'
 
 interface DartboardProps {
   onThrow: (hit: BoardThrow) => void
+  /** Darts already thrown this turn, before the upcoming click - used only to know when to clear the previous turn's click markers. */
+  currentTurnDartCount: number
 }
 
-export function Dartboard({ onThrow }: DartboardProps) {
+interface Mark {
+  x: number
+  y: number
+}
+
+const MARK_RADIUS = 7
+const MARK_DOT_RADIUS = 2.5
+
+export function Dartboard({ onThrow, currentTurnDartCount }: DartboardProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const [marks, setMarks] = useState<Mark[]>([])
 
   function handleClick(event: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current
@@ -36,6 +47,11 @@ export function Dartboard({ onThrow }: DartboardProps) {
     const centerY = rect.top + rect.height / 2
     const dx = (event.clientX - centerX) * scale
     const dy = (event.clientY - centerY) * scale
+
+    // currentTurnDartCount === 0 means this click starts a fresh turn, so the
+    // previous turn's marks should disappear now rather than keep accumulating.
+    const mark: Mark = { x: CENTER + dx, y: CENTER + dy }
+    setMarks((prev) => (currentTurnDartCount === 0 ? [mark] : [...prev, mark]))
 
     const hit = resolvePoint(dx, dy, BOARD_RADIUS)
     onThrow({ segment: hit.segment, ring: hit.ring, ...scoreHit(hit) })
@@ -133,6 +149,13 @@ export function Dartboard({ onThrow }: DartboardProps) {
 
       <circle cx={CENTER} cy={CENTER} r={RING_RADII.outerBull * BOARD_RADIUS} fill={GREEN_ACCENT} />
       <circle cx={CENTER} cy={CENTER} r={RING_RADII.bullseye * BOARD_RADIUS} fill={RED_ACCENT} />
+
+      {marks.map((mark, i) => (
+        <g key={i}>
+          <circle cx={mark.x} cy={mark.y} r={MARK_RADIUS} fill="#ffffff" stroke="#000000" strokeWidth={2} />
+          <circle cx={mark.x} cy={mark.y} r={MARK_DOT_RADIUS} fill="#000000" />
+        </g>
+      ))}
     </svg>
   )
 }

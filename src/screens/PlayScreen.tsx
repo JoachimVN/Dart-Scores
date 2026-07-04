@@ -120,7 +120,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
           containerType: 'inline-size',
         }}
       >
-        <Dartboard onThrow={onThrow} />
+        <Dartboard onThrow={onThrow} currentTurnDartCount={x01.currentTurnThrows.length} />
 
         <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
           <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
