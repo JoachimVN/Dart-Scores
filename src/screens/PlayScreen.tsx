@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
 import { ScoreDisplay } from '../components/ScoreDisplay'
@@ -22,10 +23,36 @@ const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
 const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
 
+/** How many score rows fit the top-left corner without reaching the board - grows with the board's own pixel size. */
+function maxVisibleScoresFor(boardWidthPx: number): number {
+  if (boardWidthPx < 380) return 2
+  if (boardWidthPx < 550) return 3
+  return 4
+}
+
 export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps) {
   const { x01 } = game
   const currentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
-  const scoreEntries = game.players.map((player) => {
+
+  const boardRef = useRef<HTMLDivElement>(null)
+  const [boardWidth, setBoardWidth] = useState(0)
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => setBoardWidth(entries[0].contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Rotate so whoever is up sits first, then turn order after them - the list
+  // visually "moves" each turn instead of the current player jumping around.
+  const playerCount = game.players.length
+  const rotatedPlayers = Array.from(
+    { length: playerCount },
+    (_, i) => game.players[(x01.currentPlayerIndex + i) % playerCount],
+  )
+  const scoreEntries = rotatedPlayers.map((player) => {
     const playerState = x01.playerStates.find((ps) => ps.playerId === player.id)!
     const remaining = player.id === currentPlayerId ? liveRemaining(x01) : playerState.remaining
     return { id: player.id, name: player.name, remaining }
@@ -42,6 +69,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps
 
   return (
     <div
+      ref={boardRef}
       style={{
         position: 'relative',
         width: 'min(90vh, 92vw, 800px)',
@@ -53,7 +81,12 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps
       <Dartboard onThrow={onThrow} />
 
       <div style={{ position: 'absolute', top: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <ScoreDisplay players={scoreEntries} currentPlayerId={currentPlayerId} bustedPlayerId={bustedPlayerId} />
+        <ScoreDisplay
+          players={scoreEntries}
+          currentPlayerId={currentPlayerId}
+          bustedPlayerId={bustedPlayerId}
+          maxVisible={maxVisibleScoresFor(boardWidth)}
+        />
       </div>
 
       <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
