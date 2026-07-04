@@ -59,8 +59,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   const availableUsers = allUsers.filter((u) => !selectedIds.includes(u.id))
   const players = selectedIds.map((id) => allUsers.find((u) => u.id === id)).filter((p): p is Player => Boolean(p))
 
-  function addUser(event: React.FormEvent) {
-    event.preventDefault()
+  function addUser() {
     const name = newUserName.trim()
     if (!name) return
     const user: Player = { id: generateId(), name }
@@ -121,6 +120,15 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
           <input
             value={newUserName}
             onChange={(e) => setNewUserName(e.target.value)}
+            onKeyDown={(e) => {
+              // Without this, Enter here bubbles up to the outer form and
+              // triggers "Start Game" instead (the only submit button on the
+              // page), rather than adding the user like clicking Add would.
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addUser()
+              }
+            }}
             placeholder="New user name"
             style={{ minWidth: 0, flex: 1 }}
           />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { TopBar } from './components/TopBar'
 import type { Player } from './game/types'
 import { useGame } from './hooks/useGame'
@@ -33,34 +33,33 @@ function App() {
     updateSettings(patch)
   }
 
-  if (view === 'stats') {
-    return (
-      <main>
-        <StatsScreen onBack={() => setView('main')} />
-      </main>
-    )
-  }
-
+  let mainContent: ReactNode
   if (!game) {
-    return (
-      <main>
-        <TopBar modeLabel="X01" settings={settings} onSettingsChange={handleSettingsChange} onOpenStats={() => setView('stats')} />
+    mainContent = (
+      <>
+        <TopBar
+          modeLabel="X01"
+          settings={settings}
+          onSettingsChange={handleSettingsChange}
+          onOpenStats={() => setView('stats')}
+        />
         <SetupScreen onStart={startGame} initialPlayers={lastPlayers} />
-      </main>
+      </>
     )
-  }
-
-  if (game.status === 'complete') {
-    return (
-      <main>
-        <TopBar modeLabel="X01" settings={settings} onSettingsChange={handleSettingsChange} onOpenStats={() => setView('stats')} />
+  } else if (game.status === 'complete') {
+    mainContent = (
+      <>
+        <TopBar
+          modeLabel="X01"
+          settings={settings}
+          onSettingsChange={handleSettingsChange}
+          onOpenStats={() => setView('stats')}
+        />
         <GameOverScreen game={game} onNewGame={handleNewGame} />
-      </main>
+      </>
     )
-  }
-
-  return (
-    <main>
+  } else {
+    mainContent = (
       <PlayScreen
         game={game}
         onThrow={throwDart}
@@ -68,6 +67,15 @@ function App() {
         onNewGame={handleNewGame}
         useDartNotation={settings.useDartNotation}
       />
+    )
+  }
+
+  return (
+    <main>
+      {/* Kept mounted (just hidden), not unmounted, while viewing stats - so
+          Setup's in-progress Players selection survives the round trip. */}
+      <div style={{ display: view === 'main' ? 'contents' : 'none' }}>{mainContent}</div>
+      {view === 'stats' && <StatsScreen onBack={() => setView('main')} />}
     </main>
   )
 }
