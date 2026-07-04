@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Dartboard } from '../dartboard/Dartboard'
+import { BOARD_TOP_INSET_RATIO, Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
@@ -24,23 +24,34 @@ const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
 const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
 const SIDEBAR_WIDTH = 140 // px, fixed so board sizing math stays simple; names truncate to fit
 const SIDEBAR_GAP = 12
-const ROW_HEIGHT_ESTIMATE = 44 // px, used only to decide how many rows fit before fading the rest
+const ROW_HEIGHT_ESTIMATE = 44 // px, used to decide how many rows fit before fading the rest
+const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rather than fill all available height
 
 export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps) {
   const { x01 } = game
   const currentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
   const [useDartNotation] = useState(() => getSettings().useDartNotation)
 
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const [sidebarHeight, setSidebarHeight] = useState(0)
+  // The board's own square box has empty space above the drawn rim circle
+  // (see BOARD_TOP_INSET_RATIO), so nudge the sidebar down by that same
+  // amount to line its top row up with the board's visible top edge. The
+  // sidebar's available height is also capped to the board's own height
+  // (minus that offset) so a long player list can never grow past the
+  // board and force the page to scroll.
+  const boardRef = useRef<HTMLDivElement>(null)
+  const [boardSize, setBoardSize] = useState(0)
 
   useEffect(() => {
-    const el = sidebarRef.current
+    const el = boardRef.current
     if (!el) return
-    const observer = new ResizeObserver((entries) => setSidebarHeight(entries[0].contentRect.height))
+    const observer = new ResizeObserver((entries) => setBoardSize(entries[0].contentRect.width))
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  const sidebarTopOffset = boardSize * BOARD_TOP_INSET_RATIO
+  const sidebarAvailableHeight = Math.max(0, boardSize - sidebarTopOffset)
+  const maxVisible = Math.min(MAX_VISIBLE_SCORES, Math.max(2, Math.floor(sidebarAvailableHeight / ROW_HEIGHT_ESTIMATE)))
 
   // Rotate so whoever is up sits first, then turn order after them - the list
   // visually "moves" each turn instead of the current player jumping around.
@@ -65,17 +76,43 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: SIDEBAR_GAP, width: '100%' }}>
-      <div ref={sidebarRef} style={{ width: SIDEBAR_WIDTH, flexShrink: 0 }}>
+    // Three-column grid, not flex+justifyContent:center - that would center the
+    // (sidebar+board) group as a unit, leaving the board itself off-center. The
+    // "auto" middle column always centers the board regardless of sidebar width;
+    // the empty third column balances it (and leaves room for future right-side info).
+    <div
+      style={{
+        display: 'grid',
+        // minmax(0, 1fr), not plain 1fr: a bare 1fr track still can't shrink
+        // below its content's min size, and the sidebar's 140px content would
+        // make the left track wider than the empty right one, pushing the
+        // "auto" board column off-center.
+        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+        alignItems: 'start',
+        gap: SIDEBAR_GAP,
+        width: '100%',
+      }}
+    >
+      <div
+        style={{
+          justifySelf: 'start',
+          width: SIDEBAR_WIDTH,
+          flexShrink: 0,
+          marginTop: sidebarTopOffset,
+          maxHeight: sidebarAvailableHeight,
+          overflow: 'hidden',
+        }}
+      >
         <ScoreDisplay
           players={scoreEntries}
           currentPlayerId={currentPlayerId}
           bustedPlayerId={bustedPlayerId}
-          maxVisible={Math.max(2, Math.floor(sidebarHeight / ROW_HEIGHT_ESTIMATE))}
+          maxVisible={maxVisible}
         />
       </div>
 
       <div
+        ref={boardRef}
         style={{
           position: 'relative',
           width: `min(90vh, calc(92vw - ${SIDEBAR_WIDTH + SIDEBAR_GAP}px), 800px)`,
@@ -106,6 +143,8 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps
           </button>
         </div>
       </div>
+
+      <div aria-hidden="true" />
     </div>
   )
 }

@@ -10,6 +10,9 @@ const BOARD_RADIUS = 190
 /** Radius of the black rim/number ring beyond the double ring, as a fraction of BOARD_RADIUS. */
 const NUMBER_RING_OUTER = 1.28
 
+/** Empty space between the top of the square SVG and the top of the drawn rim circle, as a fraction of the rendered board size - lets other UI (e.g. a sidebar) line up with the board's visible top edge instead of its invisible square box. */
+export const BOARD_TOP_INSET_RATIO = (CENTER - NUMBER_RING_OUTER * BOARD_RADIUS) / VIEWBOX_SIZE
+
 const DARK_SINGLE = '#1a1a1a'
 const LIGHT_SINGLE = '#f0e6d2'
 const RED_ACCENT = '#c62828'
