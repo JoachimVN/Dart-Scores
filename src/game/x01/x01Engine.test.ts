@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Player } from '../types'
-import { applyThrow, createX01Game, liveRemaining, undoLastThrow, type ThrowInput } from './x01Engine'
+import { applyThrow, createX01Game, lastThrow, liveRemaining, undoLastThrow, type ThrowInput } from './x01Engine'
 
 const players: Player[] = [
   { id: 'p1', name: 'Alice' },
@@ -201,5 +201,42 @@ describe('undoLastThrow', () => {
     expect(state.currentPlayerIndex).toBe(0)
     expect(state.playerStates[0].remaining).toBe(501)
     expect(state.playerStates[1].remaining).toBe(501) // untouched
+  })
+})
+
+describe('lastThrow', () => {
+  it('returns null when no darts have been thrown', () => {
+    const state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    expect(lastThrow(state)).toBeNull()
+  })
+
+  it('returns the last dart of the in-progress turn', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(5))
+
+    expect(lastThrow(state)?.value).toBe(5)
+  })
+
+  it('returns the last dart of the last completed turn once the in-progress turn is empty', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(1)) // commits p1's turn, advances to p2
+
+    expect(lastThrow(state)?.value).toBe(1)
+  })
+
+  it('is exactly what undoLastThrow removes next', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(1))
+
+    const removed = lastThrow(state)
+    const undone = undoLastThrow(state)
+
+    expect(undone.currentTurnThrows.some((t) => t.id === removed?.id)).toBe(false)
+    expect(lastThrow(undone)?.value).toBe(20)
   })
 })

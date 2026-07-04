@@ -129,6 +129,12 @@ export function undoLastThrow(state: X01State): X01State {
   }
 }
 
+/** The most recent dart thrown - whatever `undoLastThrow` would remove next, whether it's still in-progress or was the final dart of the last completed turn. */
+export function lastThrow(state: X01State): Throw | null {
+  if (state.currentTurnThrows.length > 0) return state.currentTurnThrows.at(-1)!
+  return lastCompletedTurn(state)?.throws.at(-1) ?? null
+}
+
 /** The current player's remaining score including darts thrown so far this turn (for live display). */
 export function liveRemaining(state: X01State): number {
   const currentPlayerState = state.playerStates[state.currentPlayerIndex]

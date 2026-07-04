@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BOARD_TOP_INSET_RATIO, Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
 import { CheckoutCalculator } from '../components/CheckoutCalculator'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
-import type { GameState } from '../game/types'
+import type { GameState, Throw } from '../game/types'
 
 interface PlayScreenProps {
   game: GameState
   onThrow: (throwInput: BoardThrow) => void
   onUndo: () => void
+  onRedo: () => void
+  canRedo: boolean
+  redoneThrow: Throw | null
   onNewGame: () => void
   useDartNotation: boolean
 }
@@ -28,11 +31,21 @@ const SIDEBAR_GAP = 12
 const ROW_HEIGHT_ESTIMATE = 44 // px, used to decide how many rows fit before fading the rest
 const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rather than fill all available height
 
-export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }: PlayScreenProps) {
+export function PlayScreen({
+  game,
+  onThrow,
+  onUndo,
+  onRedo,
+  canRedo,
+  redoneThrow,
+  onNewGame,
+  useDartNotation,
+}: PlayScreenProps) {
   const { x01 } = game
   const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
   const isBetweenTurns = x01.currentTurnThrows.length === 0
   const lastTurn = lastCompletedTurn(x01)
+  const canUndo = x01.currentTurnThrows.length > 0 || !!lastTurn
 
   // The dart marks/turn badges deliberately keep showing the player who just
   // went until their replacement actually throws (see Dartboard/TurnPanel) -
@@ -93,10 +106,39 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
     }
   }
 
-  function handleUndo() {
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return
     onUndo()
     setUndoSignal((n) => n + 1)
-  }
+  }, [canUndo, onUndo])
+
+  const handleRedo = useCallback(() => {
+    if (!canRedo) return
+    onRedo()
+  }, [canRedo, onRedo])
+
+  // Arrow keys are the primary shortcut (no modifier, easy to discover);
+  // Ctrl+Z/Ctrl+Y and Ctrl+Shift+Z are offered on top for players used to
+  // those editor/OS conventions. All are equivalent to the buttons below.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const mod = event.ctrlKey || event.metaKey
+      const key = event.key.toLowerCase()
+      const isUndo = event.key === 'ArrowLeft' || (mod && !event.shiftKey && key === 'z')
+      const isRedo = event.key === 'ArrowRight' || (mod && key === 'y') || (mod && event.shiftKey && key === 'z')
+
+      if (isUndo) {
+        event.preventDefault()
+        handleUndo()
+      } else if (isRedo) {
+        event.preventDefault()
+        handleRedo()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleUndo, handleRedo])
 
   return (
     // Three-column grid, not flex+justifyContent:center - that would center the
@@ -145,7 +187,12 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
           containerType: 'inline-size',
         }}
       >
-        <Dartboard onThrow={onThrow} currentTurnDartCount={x01.currentTurnThrows.length} undoSignal={undoSignal} />
+        <Dartboard
+          onThrow={onThrow}
+          currentTurnDartCount={x01.currentTurnThrows.length}
+          undoSignal={undoSignal}
+          redoneThrow={redoneThrow}
+        />
 
         <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
           <button type="button" onClick={handleReset} style={CORNER_BUTTON_STYLE}>
@@ -157,14 +204,33 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
           <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
         </div>
 
-        <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: CORNER_INSET,
+            right: CORNER_INSET,
+            fontSize: CORNER_FONT_SIZE,
+            display: 'flex',
+            gap: '0.4em',
+          }}
+        >
           <button
             type="button"
             onClick={handleUndo}
-            disabled={x01.currentTurnThrows.length === 0 && !lastTurn}
+            disabled={!canUndo}
             style={CORNER_BUTTON_STYLE}
+            title="Undo (← or Ctrl+Z)"
           >
-            Undo
+            ← Undo
+          </button>
+          <button
+            type="button"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            style={CORNER_BUTTON_STYLE}
+            title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
+          >
+            Redo →
           </button>
         </div>
       </div>

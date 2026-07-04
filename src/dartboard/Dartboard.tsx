@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { BOARD_RADIUS, CENTER, VIEWBOX_SIZE, BoardFace } from './BoardFace'
+import { computeMarkPosition } from './computeMarkPosition'
 import { DartMark } from './DartMark'
 import type { BoardThrow } from './dartboard.types'
+import type { Throw } from '../game/types'
 import { resolvePoint } from './hitTest'
 import { scoreHit } from './scoring'
 
@@ -18,6 +20,13 @@ interface DartboardProps {
    * so this is an explicit signal instead of an inferred one.
    */
   undoSignal: number
+  /**
+   * The dart most recently restored by Redo, if that was the last action -
+   * its mark is added back approximated from segment/ring via
+   * computeMarkPosition, the same way ShotsBoard renders historical throws,
+   * since the original click position isn't preserved through an undo.
+   */
+  redoneThrow: Throw | null
 }
 
 interface Mark {
@@ -25,7 +34,7 @@ interface Mark {
   y: number
 }
 
-export function Dartboard({ onThrow, currentTurnDartCount, undoSignal }: DartboardProps) {
+export function Dartboard({ onThrow, currentTurnDartCount, undoSignal, redoneThrow }: DartboardProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [marks, setMarks] = useState<Mark[]>([])
 
@@ -33,6 +42,11 @@ export function Dartboard({ onThrow, currentTurnDartCount, undoSignal }: Dartboa
     if (undoSignal === 0) return
     setMarks((prev) => prev.slice(0, -1))
   }, [undoSignal])
+
+  useEffect(() => {
+    if (!redoneThrow) return
+    setMarks((prev) => [...prev, computeMarkPosition(redoneThrow)])
+  }, [redoneThrow])
 
   function handleClick(event: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current
