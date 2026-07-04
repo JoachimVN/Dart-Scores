@@ -40,9 +40,11 @@ describe('buildGameSummary', () => {
     expect(summary.completedAt).toBe(2000)
 
     const alice = summary.players.find((p) => p.playerId === 'p1')!
-    expect(alice).toEqual({ playerId: 'p1', name: 'Alice', won: false, turnsPlayed: 1, pointsScored: 0, bestCheckout: 0 })
+    expect(alice).toMatchObject({ playerId: 'p1', name: 'Alice', won: false, turnsPlayed: 1, pointsScored: 0, bestCheckout: 0 })
+    expect(alice.throws.map((t) => t.value)).toEqual([60])
 
     const bob = summary.players.find((p) => p.playerId === 'p2')!
-    expect(bob).toEqual({ playerId: 'p2', name: 'Bob', won: true, turnsPlayed: 1, pointsScored: 40, bestCheckout: 40 })
+    expect(bob).toMatchObject({ playerId: 'p2', name: 'Bob', won: true, turnsPlayed: 1, pointsScored: 40, bestCheckout: 40 })
+    expect(bob.throws.map((t) => t.value)).toEqual([40])
   })
 })

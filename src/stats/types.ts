@@ -1,3 +1,5 @@
+import type { Throw } from '../game/types'
+
 /** One player's result within a single completed game, snapshotted at game-over time. */
 export interface PlayerGameSummary {
   playerId: string
@@ -8,6 +10,8 @@ export interface PlayerGameSummary {
   pointsScored: number
   /** Highest winning checkout this player hit in the game, 0 if they didn't finish it. */
   bestCheckout: number
+  /** Every dart this player threw in the game, in order - powers shot recaps/heatmaps. */
+  throws: Throw[]
 }
 
 export interface GameSummary {

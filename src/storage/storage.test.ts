@@ -56,4 +56,27 @@ describe('migrations', () => {
       history: [],
     })
   })
+
+  it('migrates a v3 envelope (history present, no per-player throws) defaulting throws to []', () => {
+    const v3Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [
+        {
+          id: 'g1',
+          mode: 'x01',
+          startingScore: 501,
+          doubleOut: true,
+          completedAt: 1000,
+          players: [{ playerId: 'p1', name: 'Alice', won: true, turnsPlayed: 5, pointsScored: 501, bestCheckout: 40 }],
+        },
+      ],
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 3, data: v3Data }))
+    expect(loadRoot()).toEqual({
+      ...v3Data,
+      history: [{ ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [] }] }],
+    })
+  })
 })

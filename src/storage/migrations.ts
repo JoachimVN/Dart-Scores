@@ -30,4 +30,20 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 3,
+    to: 4,
+    migrate: (data) => {
+      // Existing history entries predate per-dart tracking - their throws
+      // can't be reconstructed, so default to an empty list.
+      const root = data as { history?: Array<{ players?: Array<Record<string, unknown>> }> }
+      return {
+        ...root,
+        history: (root.history ?? []).map((game) => ({
+          ...game,
+          players: (game.players ?? []).map((player) => ({ ...player, throws: [] })),
+        })),
+      }
+    },
+  },
 ]

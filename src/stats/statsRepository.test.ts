@@ -44,8 +44,8 @@ describe('computePlayerStats', () => {
       makeSummary({
         id: 'g1',
         players: [
-          { playerId: 'p1', name: 'Alice', won: true, turnsPlayed: 10, pointsScored: 501, bestCheckout: 40 },
-          { playerId: 'p2', name: 'Bob', won: false, turnsPlayed: 11, pointsScored: 480, bestCheckout: 0 },
+          { playerId: 'p1', name: 'Alice', won: true, turnsPlayed: 10, pointsScored: 501, bestCheckout: 40, throws: [] },
+          { playerId: 'p2', name: 'Bob', won: false, turnsPlayed: 11, pointsScored: 480, bestCheckout: 0, throws: [] },
         ],
       }),
     )
@@ -53,7 +53,7 @@ describe('computePlayerStats', () => {
       makeSummary({
         id: 'g2',
         players: [
-          { playerId: 'p1', name: 'Alice', won: false, turnsPlayed: 12, pointsScored: 490, bestCheckout: 0 },
+          { playerId: 'p1', name: 'Alice', won: false, turnsPlayed: 12, pointsScored: 490, bestCheckout: 0, throws: [] },
         ],
       }),
     )

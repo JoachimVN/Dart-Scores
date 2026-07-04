@@ -2,7 +2,7 @@ import type { GameState, Player } from '../game/types'
 import type { GameSummary } from '../stats/types'
 
 export const STORAGE_KEY = 'dartscores:root'
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4
 
 export type Theme = 'light' | 'dark' | 'system'
 

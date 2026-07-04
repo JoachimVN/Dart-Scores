@@ -24,6 +24,14 @@ function App() {
     newGame()
   }
 
+  // Instantly starts a fresh game with the exact same players and settings,
+  // skipping Setup entirely - "New game" above is for when you want to
+  // change something first.
+  function handleRematch() {
+    if (!game) return
+    startGame(game.x01.config, game.players)
+  }
+
   // Applies globally regardless of which screen renders below (including Play,
   // which has no top bar of its own).
   useTheme(settings.theme)
@@ -55,7 +63,12 @@ function App() {
           onSettingsChange={handleSettingsChange}
           onOpenStats={() => setView('stats')}
         />
-        <GameOverScreen game={game} onNewGame={handleNewGame} />
+        <GameOverScreen
+          game={game}
+          useDartNotation={settings.useDartNotation}
+          onRematch={handleRematch}
+          onNewGame={handleNewGame}
+        />
       </>
     )
   } else {

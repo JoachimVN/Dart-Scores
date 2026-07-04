@@ -20,6 +20,7 @@ export function buildGameSummary(game: GameState): GameSummary {
       turnsPlayed: playerState.turns.length,
       pointsScored,
       bestCheckout,
+      throws: playerState.turns.flatMap((turn) => turn.throws),
     }
   })
 

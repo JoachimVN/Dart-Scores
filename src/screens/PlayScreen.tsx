@@ -87,8 +87,8 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   // so the last player's hits stay visible until the next turn's first dart.
   const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
 
-  function handleNewGame() {
-    if (window.confirm('Start a new game? Current progress will be lost.')) {
+  function handleReset() {
+    if (window.confirm('Reset this game? Current progress will be lost.')) {
       onNewGame()
     }
   }
@@ -148,8 +148,8 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         <Dartboard onThrow={onThrow} currentTurnDartCount={x01.currentTurnThrows.length} undoSignal={undoSignal} />
 
         <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
-            New game
+          <button type="button" onClick={handleReset} style={CORNER_BUTTON_STYLE}>
+            Reset
           </button>
         </div>
 
