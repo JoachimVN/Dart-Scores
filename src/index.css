@@ -1,5 +1,6 @@
 :root {
   --text: #1a1a1a;
+  --text-muted: #6b6b6b;
   --bg: #ffffff;
   --border: #e5e4e7;
   --hover-bg: #f0f0f2;
@@ -12,6 +13,7 @@
 
 :root[data-theme='dark'] {
   --text: #e5e5e5;
+  --text-muted: #9a9a9a;
   --bg: #16171d;
   --border: #2e303a;
   --hover-bg: #242631;

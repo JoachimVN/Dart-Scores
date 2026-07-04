@@ -23,7 +23,7 @@ interface PlayScreenProps {
 const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
 const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
-const SIDEBAR_WIDTH = 140 // px, fixed so board sizing math stays simple; names truncate to fit
+const SIDEBAR_WIDTH = 175 // px, fixed so board sizing math stays simple; names truncate to fit
 const SIDEBAR_GAP = 12
 const ROW_HEIGHT_ESTIMATE = 44 // px, used to decide how many rows fit before fading the rest
 const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rather than fill all available height
@@ -115,8 +115,10 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         ref={boardRef}
         style={{
           position: 'relative',
-          width: `min(90vh, calc(92vw - ${SIDEBAR_WIDTH + SIDEBAR_GAP}px), 800px)`,
-          height: `min(90vh, calc(92vw - ${SIDEBAR_WIDTH + SIDEBAR_GAP}px), 800px)`,
+          // Two side columns (sidebar + checkout), not one - each needs its
+          // own width+gap reserved, or the total layout can exceed 92vw.
+          width: `min(90vh, calc(92vw - ${2 * (SIDEBAR_WIDTH + SIDEBAR_GAP)}px), 800px)`,
+          height: `min(90vh, calc(92vw - ${2 * (SIDEBAR_WIDTH + SIDEBAR_GAP)}px), 800px)`,
           containerType: 'inline-size',
         }}
       >

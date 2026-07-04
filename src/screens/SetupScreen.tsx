@@ -107,7 +107,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       <section className="roster-panel" style={{ minWidth: 0 }}>
         <h2>Users</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
+          {availableUsers.length === 0 && <li style={{ color: 'var(--text-muted)' }}>No saved users yet.</li>}
           {availableUsers.map((user) => (
             <RosterRow
               key={user.id}
@@ -134,7 +134,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
         <h2>Players ({players.length})</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {players.length === 0 && (
-            <li style={{ color: 'var(--border)' }}>Click a user to add them here.</li>
+            <li style={{ color: 'var(--text-muted)' }}>Click a user to add them here.</li>
           )}
           {players.map((player) => (
             <RosterRow key={player.id} name={player.name} onMove={() => removeFromGame(player.id)} />
