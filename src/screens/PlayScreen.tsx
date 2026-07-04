@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BOARD_TOP_INSET_RATIO, Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
+import { CheckoutCalculator } from '../components/CheckoutCalculator'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
@@ -143,7 +144,20 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         </div>
       </div>
 
-      <div aria-hidden="true" />
+      <div
+        style={{
+          justifySelf: 'end',
+          width: SIDEBAR_WIDTH,
+          flexShrink: 0,
+          marginTop: sidebarTopOffset,
+        }}
+      >
+        <CheckoutCalculator
+          remaining={liveRemaining(x01)}
+          dartsAvailable={3 - x01.currentTurnThrows.length}
+          doubleOut={x01.config.doubleOut}
+        />
+      </div>
     </div>
   )
 }
