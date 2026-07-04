@@ -1,4 +1,4 @@
-import { getCheckoutSuggestion } from '../game/checkout/checkoutCalculator'
+import { getCheckoutOptions } from '../game/checkout/checkoutCalculator'
 import { ThrowBadge } from './ThrowBadge'
 
 interface CheckoutCalculatorProps {
@@ -7,18 +7,24 @@ interface CheckoutCalculatorProps {
   doubleOut: boolean
 }
 
+const MAX_OPTIONS = 3
+
 export function CheckoutCalculator({ remaining, dartsAvailable, doubleOut }: CheckoutCalculatorProps) {
-  const suggestion = getCheckoutSuggestion(remaining, dartsAvailable, doubleOut)
+  const options = getCheckoutOptions(remaining, dartsAvailable, doubleOut, MAX_OPTIONS)
 
   return (
     <div className="roster-panel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <span style={{ fontWeight: 700 }}>Checkout</span>
-      {suggestion ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3em' }}>
-          {suggestion.map((label, i) => (
-            <ThrowBadge key={i} label={label} />
+      {options.length > 0 ? (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {options.map((combo, i) => (
+            <li key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3em' }}>
+              {combo.map((label, j) => (
+                <ThrowBadge key={j} label={label} />
+              ))}
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
         <span style={{ color: 'var(--border)' }}>-</span>
       )}

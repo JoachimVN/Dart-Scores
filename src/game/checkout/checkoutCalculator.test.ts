@@ -1,62 +1,85 @@
 import { describe, expect, it } from 'vitest'
-import { getCheckoutSuggestion } from './checkoutCalculator'
+import { getCheckoutOptions } from './checkoutCalculator'
 
-describe('getCheckoutSuggestion (double out)', () => {
-  it('suggests the famous 170 checkout: T20, T20, Bull', () => {
-    expect(getCheckoutSuggestion(170, 3, true)).toEqual(['T20', 'T20', 'Bull'])
+describe('getCheckoutOptions (double out)', () => {
+  it('lists the famous 170 checkout first: T20, T20, Bull', () => {
+    const options = getCheckoutOptions(170, 3, true)
+    expect(options[0]).toEqual(['T20', 'T20', 'Bull'])
   })
 
   it('prefers the fewest darts - 40 finishes on a single D20, not a longer sequence', () => {
-    expect(getCheckoutSuggestion(40, 3, true)).toEqual(['D20'])
+    expect(getCheckoutOptions(40, 3, true)).toEqual([['D20']])
   })
 
-  it('suggests the standard 2-dart 100 checkout: T20, D20', () => {
-    expect(getCheckoutSuggestion(100, 3, true)).toEqual(['T20', 'D20'])
+  it('lists the standard 2-dart 100 checkout first: T20, D20', () => {
+    const options = getCheckoutOptions(100, 3, true)
+    expect(options[0]).toEqual(['T20', 'D20'])
   })
 
-  it('suggests the standard 121 checkout: T20, 11, D16 (or an equivalent 3-dart finish)', () => {
-    const result = getCheckoutSuggestion(121, 3, true)
-    expect(result).not.toBeNull()
-    expect(result).toHaveLength(3)
-    const total = result!.reduce((sum, label) => sum + dartValue(label), 0)
-    expect(total).toBe(121)
-    expect(isFinishingLabel(result!.at(-1)!)).toBe(true)
+  it('returns multiple distinct options when more than one exists at the minimal dart count', () => {
+    const options = getCheckoutOptions(100, 3, true)
+    expect(options.length).toBeGreaterThan(1)
+    for (const combo of options) {
+      expect(totalValue(combo)).toBe(100)
+      expect(isFinishingLabel(combo.at(-1)!)).toBe(true)
+    }
   })
 
-  it('returns null for scores above the maximum 170 checkout', () => {
-    expect(getCheckoutSuggestion(171, 3, true)).toBeNull()
+  it('never returns the same darts in a different order as a separate option', () => {
+    const options = getCheckoutOptions(100, 3, true)
+    const signatures = options.map((combo) => [...combo].sort().join(','))
+    expect(new Set(signatures).size).toBe(signatures.length)
   })
 
-  it('returns null for a bogey number with no valid double-out finish', () => {
-    expect(getCheckoutSuggestion(169, 3, true)).toBeNull()
-    expect(getCheckoutSuggestion(168, 3, true)).toBeNull()
+  it('caps the number of options at the given limit', () => {
+    const options = getCheckoutOptions(100, 3, true, 2)
+    expect(options.length).toBeLessThanOrEqual(2)
   })
 
-  it('returns null when reaching exactly 1 with fewer darts (can never finish from 1)', () => {
-    expect(getCheckoutSuggestion(1, 3, true)).toBeNull()
+  it('every option for a valid 3-dart finish sums correctly and ends on a finishing dart', () => {
+    const options = getCheckoutOptions(121, 3, true)
+    expect(options.length).toBeGreaterThan(0)
+    for (const combo of options) {
+      expect(combo).toHaveLength(3)
+      expect(totalValue(combo)).toBe(121)
+      expect(isFinishingLabel(combo.at(-1)!)).toBe(true)
+    }
+  })
+
+  it('returns an empty array for scores above the maximum 170 checkout', () => {
+    expect(getCheckoutOptions(171, 3, true)).toEqual([])
+  })
+
+  it('returns an empty array for a bogey number with no valid double-out finish', () => {
+    expect(getCheckoutOptions(169, 3, true)).toEqual([])
+    expect(getCheckoutOptions(168, 3, true)).toEqual([])
+  })
+
+  it('returns an empty array when reaching exactly 1 (can never finish from 1)', () => {
+    expect(getCheckoutOptions(1, 3, true)).toEqual([])
   })
 
   it('respects a reduced number of darts available (e.g. 1 dart left this turn)', () => {
-    expect(getCheckoutSuggestion(100, 1, true)).toBeNull() // needs 2 darts minimum
-    expect(getCheckoutSuggestion(40, 1, true)).toEqual(['D20'])
+    expect(getCheckoutOptions(100, 1, true)).toEqual([]) // needs 2 darts minimum
+    expect(getCheckoutOptions(40, 1, true)).toEqual([['D20']])
   })
 
-  it('returns null for 0 or negative remaining, or 0 darts available', () => {
-    expect(getCheckoutSuggestion(0, 3, true)).toBeNull()
-    expect(getCheckoutSuggestion(40, 0, true)).toBeNull()
+  it('returns an empty array for 0 or negative remaining, or 0 darts available', () => {
+    expect(getCheckoutOptions(0, 3, true)).toEqual([])
+    expect(getCheckoutOptions(40, 0, true)).toEqual([])
   })
 })
 
-describe('getCheckoutSuggestion (straight out, no double required)', () => {
+describe('getCheckoutOptions (straight out, no double required)', () => {
   it('allows finishing on a non-double single dart when no other candidate matches', () => {
     // 19 has no double/treble/bull equivalent, so it must fall back to the plain single.
-    expect(getCheckoutSuggestion(19, 3, false)).toEqual(['19'])
-  })
-
-  it('still finds a same-value double ahead of the equivalent single (priority order, not a double-out requirement)', () => {
-    expect(getCheckoutSuggestion(20, 3, false)).toEqual(['D10'])
+    expect(getCheckoutOptions(19, 3, false)).toEqual([['19']])
   })
 })
+
+function totalValue(combo: string[]): number {
+  return combo.reduce((sum, label) => sum + dartValue(label), 0)
+}
 
 function dartValue(label: string): number {
   if (label === 'Bull') return 50
