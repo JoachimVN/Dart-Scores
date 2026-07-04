@@ -6,6 +6,8 @@ import { generateId } from '../shared/id'
 
 interface SetupScreenProps {
   onStart: (config: X01Config, players: Player[]) => void
+  /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
+  initialPlayers?: Player[]
 }
 
 interface RosterRowProps {
@@ -46,9 +48,9 @@ function RosterRow({ name, onMove, onDelete }: RosterRowProps) {
   )
 }
 
-export function SetupScreen({ onStart }: SetupScreenProps) {
+export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   const [allUsers, setAllUsers] = useState<Player[]>(() => listPlayers())
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => initialPlayers?.map((p) => p.id) ?? [])
   const [newUserName, setNewUserName] = useState('')
 
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
