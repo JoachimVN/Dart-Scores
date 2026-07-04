@@ -34,14 +34,13 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   const isBetweenTurns = x01.currentTurnThrows.length === 0
   const lastTurn = lastCompletedTurn(x01)
 
-  // The engine advances currentPlayerIndex the instant a turn ends, but the
-  // dart marks/turn badges deliberately keep showing the player who just
-  // went until their replacement actually throws (see Dartboard/TurnPanel).
-  // If the score list's highlight/order jumped ahead immediately, it would
-  // show the *next* player highlighted right next to the *previous*
-  // player's darts - reading as if the highlighted player took those shots.
-  // Keep them in sync: stay on whoever just went until they throw again.
+  // The dart marks/turn badges deliberately keep showing the player who just
+  // went until their replacement actually throws (see Dartboard/TurnPanel) -
+  // whoever that is, named directly above those badges so there's no need to
+  // infer it from the score list. The score list itself always shows the
+  // real current/next player immediately, with no lag.
   const displayedCurrentPlayerId = isBetweenTurns && lastTurn ? lastTurn.playerId : engineCurrentPlayerId
+  const displayedPlayerName = game.players.find((p) => p.id === displayedCurrentPlayerId)?.name ?? ''
 
   // The board's own square box has empty space above the drawn rim circle
   // (see BOARD_TOP_INSET_RATIO), so nudge the sidebar down by that same
@@ -65,13 +64,13 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   const sidebarAvailableHeight = Math.max(0, boardSize - sidebarTopOffset)
   const maxVisible = Math.min(MAX_VISIBLE_SCORES, Math.max(2, Math.floor(sidebarAvailableHeight / ROW_HEIGHT_ESTIMATE)))
 
-  // Rotate so whoever is displayed-current sits first, then turn order after
+  // Rotate so the real current/next player sits first, then turn order after
   // them - the list visually "moves" each turn instead of jumping around.
   const playerCount = game.players.length
-  const displayedPlayerIndex = game.players.findIndex((p) => p.id === displayedCurrentPlayerId)
+  const currentPlayerIndexInList = game.players.findIndex((p) => p.id === engineCurrentPlayerId)
   const rotatedPlayers = Array.from(
     { length: playerCount },
-    (_, i) => game.players[(displayedPlayerIndex + i) % playerCount],
+    (_, i) => game.players[(currentPlayerIndexInList + i) % playerCount],
   )
   const scoreEntries = rotatedPlayers.map((player) => {
     const playerState = x01.playerStates.find((ps) => ps.playerId === player.id)!
@@ -129,8 +128,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
       >
         <ScoreDisplay
           players={scoreEntries}
-          currentPlayerId={displayedCurrentPlayerId}
-          upNextPlayerId={engineCurrentPlayerId}
+          currentPlayerId={engineCurrentPlayerId}
           bustedPlayerId={bustedPlayerId}
           maxVisible={maxVisible}
         />
@@ -156,7 +154,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         </div>
 
         <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} />
+          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
         </div>
 
         <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
