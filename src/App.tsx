@@ -11,7 +11,7 @@ import { getSettings, updateSettings } from './settings/settingsRepository'
 import type { Settings } from './storage/schema'
 
 function App() {
-  const { game, startGame, throwDart, undo, redo, canRedo, lastRedoneThrow, newGame } = useGame()
+  const { game, startGame, throwDart, undo, redo, canRedo, newGame } = useGame()
   const [settings, setSettings] = useState<Settings>(() => getSettings())
   const [view, setView] = useState<'main' | 'stats'>('main')
   const [lastPlayers, setLastPlayers] = useState<Player[]>([])
@@ -79,7 +79,6 @@ function App() {
         onUndo={undo}
         onRedo={redo}
         canRedo={canRedo}
-        redoneThrow={lastRedoneThrow}
         onNewGame={handleNewGame}
         onRestart={handleRematch}
         useDartNotation={settings.useDartNotation}

@@ -5,7 +5,7 @@ import { CheckoutCalculator } from '../components/CheckoutCalculator'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
-import type { GameState, Throw } from '../game/types'
+import type { GameState } from '../game/types'
 
 interface PlayScreenProps {
   game: GameState
@@ -13,7 +13,6 @@ interface PlayScreenProps {
   onUndo: () => void
   onRedo: () => void
   canRedo: boolean
-  redoneThrow: Throw | null
   onNewGame: () => void
   onRestart: () => void
   useDartNotation: boolean
@@ -38,7 +37,6 @@ export function PlayScreen({
   onUndo,
   onRedo,
   canRedo,
-  redoneThrow,
   onNewGame,
   onRestart,
   useDartNotation,
@@ -65,7 +63,6 @@ export function PlayScreen({
   // board and force the page to scroll.
   const boardRef = useRef<HTMLDivElement>(null)
   const [boardSize, setBoardSize] = useState(0)
-  const [undoSignal, setUndoSignal] = useState(0)
 
   useEffect(() => {
     const el = boardRef.current
@@ -117,7 +114,6 @@ export function PlayScreen({
   const handleUndo = useCallback(() => {
     if (!canUndo) return
     onUndo()
-    setUndoSignal((n) => n + 1)
   }, [canUndo, onUndo])
 
   const handleRedo = useCallback(() => {
@@ -198,8 +194,7 @@ export function PlayScreen({
         <Dartboard
           onThrow={onThrow}
           currentTurnDartCount={x01.currentTurnThrows.length}
-          undoSignal={undoSignal}
-          redoneThrow={redoneThrow}
+          displayedThrows={displayedThrows}
         />
 
         <div
