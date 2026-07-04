@@ -69,6 +69,12 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   const lastTurn = lastCompletedTurn(x01)
   const bustedPlayerId = x01.currentTurnThrows.length === 0 && lastTurn?.bust ? lastTurn.playerId : null
 
+  // Between turns, currentTurnThrows is already reset to [] (and the engine
+  // commits the final dart directly, so there's never an intermediate render
+  // showing all 3) - fall back to the last completed turn's full throw list
+  // so the last player's hits stay visible until the next turn's first dart.
+  const displayedThrows = x01.currentTurnThrows.length > 0 ? x01.currentTurnThrows : (lastTurn?.throws ?? [])
+
   function handleNewGame() {
     if (window.confirm('Start a new game? Current progress will be lost.')) {
       onNewGame()
@@ -131,7 +137,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         </div>
 
         <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <TurnPanel throws={x01.currentTurnThrows} useDartNotation={useDartNotation} />
+          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} />
         </div>
 
         <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
