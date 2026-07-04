@@ -1,9 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { applyThrow, createX01Game, undoLastThrow, type ThrowInput } from '../game/x01/x01Engine'
 import type { X01Config } from '../game/x01/x01Types'
 import type { GameState, Player } from '../game/types'
 import { generateId } from '../shared/id'
 import { clearActiveGame, loadActiveGame, saveActiveGame } from '../storage/gameRepository'
+import { buildGameSummary } from '../stats/buildGameSummary'
+import { appendGameHistory } from '../stats/statsRepository'
 
 function buildGameState(config: X01Config, players: Player[]): GameState {
   const now = Date.now()
@@ -41,6 +43,20 @@ export function useGame() {
       return next
     })
   }, [])
+
+  // Record history in an effect, not inside the setGame updater above: React
+  // StrictMode intentionally double-invokes updater functions in dev mode, and
+  // unlike the idempotent saveActiveGame overwrite, appendGameHistory appends -
+  // a double-invoke there would record every completed game twice. The ref
+  // guard also protects against this same effect re-running for a game whose
+  // completion was already recorded (e.g. a re-render with no real state change).
+  const recordedGameIds = useRef(new Set<string>())
+  useEffect(() => {
+    if (game?.status === 'complete' && !recordedGameIds.current.has(game.id)) {
+      recordedGameIds.current.add(game.id)
+      appendGameHistory(buildGameSummary(game))
+    }
+  }, [game])
 
   const undo = useCallback(() => {
     setGame((current) => {

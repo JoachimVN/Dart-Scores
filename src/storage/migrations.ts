@@ -18,4 +18,16 @@ export const migrations: Migration[] = [
     to: 2,
     migrate: (data) => ({ ...(data as object), settings: defaultSettings() }),
   },
+  {
+    from: 2,
+    to: 3,
+    migrate: (data) => {
+      const root = data as { settings?: Partial<ReturnType<typeof defaultSettings>> }
+      return {
+        ...root,
+        settings: { ...defaultSettings(), ...root.settings },
+        history: [],
+      }
+    },
+  },
 ]

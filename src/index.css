@@ -3,10 +3,27 @@
   --bg: #ffffff;
   --border: #e5e4e7;
   --hover-bg: #f0f0f2;
+  --panel-bg: #fafafa;
   color-scheme: light;
   font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
+}
+
+:root[data-theme='dark'] {
+  --text: #e5e5e5;
+  --bg: #16171d;
+  --border: #2e303a;
+  --hover-bg: #242631;
+  --panel-bg: #1c1d24;
+  color-scheme: dark;
+}
+
+.roster-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--panel-bg);
 }
 
 .roster-row {
@@ -18,6 +35,7 @@
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
+  background: var(--bg);
   transition: background-color 0.15s ease;
 }
 

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
-import { getSettings, updateSettings } from '../settings/settingsRepository'
 import { generateId } from '../shared/id'
 
 interface SetupScreenProps {
@@ -54,7 +53,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
-  const [useDartNotation, setUseDartNotation] = useState(() => getSettings().useDartNotation)
 
   const availableUsers = allUsers.filter((u) => !selectedIds.includes(u.id))
   const players = selectedIds.map((id) => allUsers.find((u) => u.id === id)).filter((p): p is Player => Boolean(p))
@@ -87,7 +85,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (players.length === 0) return
-    updateSettings({ useDartNotation })
     onStart({ startingScore, doubleOut }, players)
   }
 
@@ -105,7 +102,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         gap: 16,
       }}
     >
-      <section style={{ minWidth: 0 }}>
+      <section className="roster-panel" style={{ minWidth: 0 }}>
         <h2>Users</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
@@ -131,7 +128,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         </div>
       </section>
 
-      <section style={{ minWidth: 0 }}>
+      <section className="roster-panel" style={{ minWidth: 0 }}>
         <h2>Players ({players.length})</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {players.length === 0 && (
@@ -144,7 +141,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       </section>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-        <h1>Dart Scores</h1>
+        <h2>Game Settings</h2>
 
         <fieldset style={{ display: 'flex', gap: 16, border: 'none', padding: 0 }}>
           <legend>Starting score</legend>
@@ -170,15 +167,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
         <label>
           <input type="checkbox" checked={doubleOut} onChange={(e) => setDoubleOut(e.target.checked)} /> Double out
-        </label>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={useDartNotation}
-            onChange={(e) => setUseDartNotation(e.target.checked)}
-          />{' '}
-          Show dart notation (T20) instead of points (60)
         </label>
 
         <button type="submit" disabled={players.length === 0}>

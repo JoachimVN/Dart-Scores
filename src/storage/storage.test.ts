@@ -23,11 +23,12 @@ describe('loadRoot', () => {
 })
 
 describe('saveRoot / loadRoot round-trip', () => {
-  it('persists and reloads players, the active game, and settings unchanged', () => {
+  it('persists and reloads players, the active game, settings, and history unchanged', () => {
     const root = {
       players: [{ id: 'p1', name: 'Alice' }],
       activeGame: null,
-      settings: { useDartNotation: false },
+      settings: { useDartNotation: false, theme: 'dark' as const },
+      history: [],
     }
     saveRoot(root)
     expect(loadRoot()).toEqual(root)
@@ -35,9 +36,24 @@ describe('saveRoot / loadRoot round-trip', () => {
 })
 
 describe('migrations', () => {
-  it('migrates a v1 envelope (no settings field) up to the current version, adding defaults', () => {
+  it('migrates a v1 envelope (no settings/history fields) all the way to the current version', () => {
     const v1Data = { players: [{ id: 'p1', name: 'Alice' }], activeGame: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 1, data: v1Data }))
-    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings() })
+    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings(), history: [] })
+  })
+
+  it('migrates a v2 envelope (settings present, no theme/history) preserving existing settings', () => {
+    const v2Data = {
+      players: [{ id: 'p1', name: 'Alice' }],
+      activeGame: null,
+      settings: { useDartNotation: false },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 2, data: v2Data }))
+    expect(loadRoot()).toEqual({
+      players: v2Data.players,
+      activeGame: null,
+      settings: { useDartNotation: false, theme: 'system' },
+      history: [],
+    })
   })
 })
