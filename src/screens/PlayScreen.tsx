@@ -30,7 +30,18 @@ const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rath
 
 export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }: PlayScreenProps) {
   const { x01 } = game
-  const currentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
+  const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
+  const isBetweenTurns = x01.currentTurnThrows.length === 0
+  const lastTurn = lastCompletedTurn(x01)
+
+  // The engine advances currentPlayerIndex the instant a turn ends, but the
+  // dart marks/turn badges deliberately keep showing the player who just
+  // went until their replacement actually throws (see Dartboard/TurnPanel).
+  // If the score list's highlight/order jumped ahead immediately, it would
+  // show the *next* player highlighted right next to the *previous*
+  // player's darts - reading as if the highlighted player took those shots.
+  // Keep them in sync: stay on whoever just went until they throw again.
+  const displayedCurrentPlayerId = isBetweenTurns && lastTurn ? lastTurn.playerId : engineCurrentPlayerId
 
   // The board's own square box has empty space above the drawn rim circle
   // (see BOARD_TOP_INSET_RATIO), so nudge the sidebar down by that same
@@ -53,27 +64,28 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   const sidebarAvailableHeight = Math.max(0, boardSize - sidebarTopOffset)
   const maxVisible = Math.min(MAX_VISIBLE_SCORES, Math.max(2, Math.floor(sidebarAvailableHeight / ROW_HEIGHT_ESTIMATE)))
 
-  // Rotate so whoever is up sits first, then turn order after them - the list
-  // visually "moves" each turn instead of the current player jumping around.
+  // Rotate so whoever is displayed-current sits first, then turn order after
+  // them - the list visually "moves" each turn instead of jumping around.
   const playerCount = game.players.length
+  const displayedPlayerIndex = game.players.findIndex((p) => p.id === displayedCurrentPlayerId)
   const rotatedPlayers = Array.from(
     { length: playerCount },
-    (_, i) => game.players[(x01.currentPlayerIndex + i) % playerCount],
+    (_, i) => game.players[(displayedPlayerIndex + i) % playerCount],
   )
   const scoreEntries = rotatedPlayers.map((player) => {
     const playerState = x01.playerStates.find((ps) => ps.playerId === player.id)!
-    const remaining = player.id === currentPlayerId ? liveRemaining(x01) : playerState.remaining
+    const isLive = player.id === engineCurrentPlayerId && !isBetweenTurns
+    const remaining = isLive ? liveRemaining(x01) : playerState.remaining
     return { id: player.id, name: player.name, remaining }
   })
 
-  const lastTurn = lastCompletedTurn(x01)
-  const bustedPlayerId = x01.currentTurnThrows.length === 0 && lastTurn?.bust ? lastTurn.playerId : null
+  const bustedPlayerId = isBetweenTurns && lastTurn?.bust ? lastTurn.playerId : null
 
   // Between turns, currentTurnThrows is already reset to [] (and the engine
   // commits the final dart directly, so there's never an intermediate render
   // showing all 3) - fall back to the last completed turn's full throw list
   // so the last player's hits stay visible until the next turn's first dart.
-  const displayedThrows = x01.currentTurnThrows.length > 0 ? x01.currentTurnThrows : (lastTurn?.throws ?? [])
+  const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
 
   function handleNewGame() {
     if (window.confirm('Start a new game? Current progress will be lost.')) {
@@ -111,7 +123,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
       >
         <ScoreDisplay
           players={scoreEntries}
-          currentPlayerId={currentPlayerId}
+          currentPlayerId={displayedCurrentPlayerId}
           bustedPlayerId={bustedPlayerId}
           maxVisible={maxVisible}
         />
