@@ -71,7 +71,7 @@ export function Dartboard({ onThrow, currentTurnDartCount, undoSignal, redoneThr
   return (
     <BoardFace svgRef={svgRef} onClick={handleClick}>
       {marks.map((mark, i) => (
-        <DartMark key={i} x={mark.x} y={mark.y} />
+        <DartMark key={i} x={mark.x} y={mark.y} faded={currentTurnDartCount === 0} />
       ))}
     </BoardFace>
   )
