@@ -41,16 +41,17 @@ jobs:
           PORTFOLIO_TOKEN: ${{ secrets.PORTFOLIO_TOKEN }}
         run: git clone "https://x-access-token:${PORTFOLIO_TOKEN}@github.com/JoachimVN/Portfolio.git" portfolio
 
-      - name: Sync built app -> dart-scores/
+      - name: Sync built app -> projects/dart-scores/
         run: |
-          rm -rf portfolio/dart-scores
-          cp -r dist portfolio/dart-scores
+          rm -rf portfolio/projects/dart-scores
+          mkdir -p portfolio/projects
+          cp -r dist portfolio/projects/dart-scores
 
       - name: Commit and push
         run: |
           cd portfolio
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dart-scores/
+          git add projects/dart-scores/
           git diff --staged --quiet || git commit -m "chore: sync Dart Scores from Dart-Scores@${{ github.sha }}"
           git push
