@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BoardThrow } from './dartboard.types'
 import { RING_RADII, SEGMENT_ORDER, describeAnnulusSector, polarToCartesian, wedgeAngles } from './geometry'
 import { resolvePoint } from './hitTest'
@@ -23,6 +23,13 @@ interface DartboardProps {
   onThrow: (hit: BoardThrow) => void
   /** Darts already thrown this turn, before the upcoming click - used only to know when to clear the previous turn's click markers. */
   currentTurnDartCount: number
+  /**
+   * Increment this once per Undo click. A plain dart-count comparison can't
+   * tell "turn ended normally" (marks should stay) apart from "undo removed
+   * a dart" (its marker should go too) - both drop the count the same way -
+   * so this is an explicit signal instead of an inferred one.
+   */
+  undoSignal: number
 }
 
 interface Mark {
@@ -33,9 +40,14 @@ interface Mark {
 const MARK_RADIUS = 7
 const MARK_DOT_RADIUS = 2.5
 
-export function Dartboard({ onThrow, currentTurnDartCount }: DartboardProps) {
+export function Dartboard({ onThrow, currentTurnDartCount, undoSignal }: DartboardProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [marks, setMarks] = useState<Mark[]>([])
+
+  useEffect(() => {
+    if (undoSignal === 0) return
+    setMarks((prev) => prev.slice(0, -1))
+  }, [undoSignal])
 
   function handleClick(event: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current

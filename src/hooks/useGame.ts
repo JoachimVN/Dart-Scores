@@ -61,7 +61,15 @@ export function useGame() {
   const undo = useCallback(() => {
     setGame((current) => {
       if (!current) return current
-      const next: GameState = { ...current, x01: undoLastThrow(current.x01), updatedAt: Date.now() }
+      const x01 = undoLastThrow(current.x01)
+      // Reopening a winning turn (see undoLastThrow) clears winnerId, so
+      // status must be recomputed - otherwise it'd stay stuck on 'complete'.
+      const next: GameState = {
+        ...current,
+        x01,
+        status: x01.winnerId !== null ? 'complete' : 'in_progress',
+        updatedAt: Date.now(),
+      }
       saveActiveGame(next)
       return next
     })

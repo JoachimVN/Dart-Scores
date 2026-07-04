@@ -94,10 +94,39 @@ export function applyThrow(state: X01State, throwInput: ThrowInput): X01State {
   }
 }
 
-/** Removes the most recent dart from the in-progress turn, e.g. to correct a misclick. */
+/**
+ * Removes the most recent dart, e.g. to correct a misclick. If a turn is
+ * still in progress, that's just the last of currentTurnThrows. But a turn's
+ * final dart (3rd dart, a bust, or a win) commits immediately - there's no
+ * lingering "in progress" state to pop from - so undoing *that* dart means
+ * reopening the just-committed turn: drop it from the player's turns,
+ * restore their score to what it was before the turn, hand the turn back to
+ * them, and put its other darts back into the in-progress state.
+ */
 export function undoLastThrow(state: X01State): X01State {
-  if (state.currentTurnThrows.length === 0) return state
-  return { ...state, currentTurnThrows: state.currentTurnThrows.slice(0, -1) }
+  if (state.currentTurnThrows.length > 0) {
+    return { ...state, currentTurnThrows: state.currentTurnThrows.slice(0, -1) }
+  }
+
+  const lastTurn = lastCompletedTurn(state)
+  if (!lastTurn) return state
+
+  const playerIndex = state.playerStates.findIndex((ps) => ps.playerId === lastTurn.playerId)
+  if (playerIndex === -1) return state
+
+  const playerStates = state.playerStates.map((playerState, index) =>
+    index === playerIndex
+      ? { ...playerState, remaining: lastTurn.scoreBefore, turns: playerState.turns.slice(0, -1) }
+      : playerState,
+  )
+
+  return {
+    ...state,
+    playerStates,
+    currentPlayerIndex: playerIndex,
+    currentTurnThrows: lastTurn.throws.slice(0, -1),
+    winnerId: null,
+  }
 }
 
 /** The current player's remaining score including darts thrown so far this turn (for live display). */

@@ -51,6 +51,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
   // board and force the page to scroll.
   const boardRef = useRef<HTMLDivElement>(null)
   const [boardSize, setBoardSize] = useState(0)
+  const [undoSignal, setUndoSignal] = useState(0)
 
   useEffect(() => {
     const el = boardRef.current
@@ -91,6 +92,11 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
     if (window.confirm('Start a new game? Current progress will be lost.')) {
       onNewGame()
     }
+  }
+
+  function handleUndo() {
+    onUndo()
+    setUndoSignal((n) => n + 1)
   }
 
   return (
@@ -140,7 +146,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
           containerType: 'inline-size',
         }}
       >
-        <Dartboard onThrow={onThrow} currentTurnDartCount={x01.currentTurnThrows.length} />
+        <Dartboard onThrow={onThrow} currentTurnDartCount={x01.currentTurnThrows.length} undoSignal={undoSignal} />
 
         <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
           <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
@@ -155,8 +161,8 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
           <button
             type="button"
-            onClick={onUndo}
-            disabled={x01.currentTurnThrows.length === 0}
+            onClick={handleUndo}
+            disabled={x01.currentTurnThrows.length === 0 && !lastTurn}
             style={CORNER_BUTTON_STYLE}
           >
             Undo

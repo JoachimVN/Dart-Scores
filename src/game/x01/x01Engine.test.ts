@@ -137,4 +137,69 @@ describe('undoLastThrow', () => {
     const state = createX01Game({ startingScore: 501, doubleOut: true }, players)
     expect(undoLastThrow(state)).toEqual(state)
   })
+
+  it('reopens a just-committed 3-dart turn, putting the first 2 darts back in progress', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(5))
+    state = applyThrow(state, throwOf(1)) // commits the turn, advances to p2
+
+    state = undoLastThrow(state)
+
+    expect(state.currentPlayerIndex).toBe(0) // back to p1
+    expect(state.playerStates[0].remaining).toBe(501) // restored to scoreBefore
+    expect(state.playerStates[0].turns).toHaveLength(0) // turn removed
+    expect(state.currentTurnThrows.map((t) => t.value)).toEqual([20, 5]) // last dart (1) dropped
+  })
+
+  it('reopens a just-committed bust turn', () => {
+    let state = createX01Game({ startingScore: 20, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(60, 'treble', 20)) // busts immediately (20-60<0)
+
+    state = undoLastThrow(state)
+
+    expect(state.currentPlayerIndex).toBe(0)
+    expect(state.playerStates[0].remaining).toBe(20)
+    expect(state.playerStates[0].turns).toHaveLength(0)
+    expect(state.currentTurnThrows).toEqual([]) // only 1 dart in that turn, nothing left to restore
+  })
+
+  it('reopens a just-committed winning turn and clears winnerId', () => {
+    let state = createX01Game({ startingScore: 40, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(40, 'double', 20)) // wins
+
+    expect(state.winnerId).toBe('p1')
+    state = undoLastThrow(state)
+
+    expect(state.winnerId).toBeNull()
+    expect(state.currentPlayerIndex).toBe(0)
+    expect(state.playerStates[0].remaining).toBe(40)
+    expect(state.currentTurnThrows).toEqual([])
+  })
+
+  it('supports chaining: reopen a turn, then undo again to pop from the restored in-progress darts', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(5))
+    state = applyThrow(state, throwOf(1)) // commits, currentTurnThrows -> [20, 5] after first undo
+
+    state = undoLastThrow(state) // reopen: currentTurnThrows = [20, 5]
+    state = undoLastThrow(state) // normal pop: currentTurnThrows = [20]
+
+    expect(state.currentTurnThrows.map((t) => t.value)).toEqual([20])
+    expect(state.playerStates[0].turns).toHaveLength(0)
+  })
+
+  it('reopens the correct player\'s turn in a multi-player game', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(20))
+    state = applyThrow(state, throwOf(20)) // p1's turn commits, advances to p2
+
+    state = undoLastThrow(state)
+
+    expect(state.currentPlayerIndex).toBe(0)
+    expect(state.playerStates[0].remaining).toBe(501)
+    expect(state.playerStates[1].remaining).toBe(501) // untouched
+  })
 })
