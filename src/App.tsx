@@ -24,7 +24,7 @@ function App() {
 
   return (
     <main>
-      <PlayScreen game={game} onThrow={throwDart} onUndo={undo} />
+      <PlayScreen game={game} onThrow={throwDart} onUndo={undo} onNewGame={newGame} />
     </main>
   )
 }

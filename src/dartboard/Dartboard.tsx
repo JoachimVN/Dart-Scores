@@ -4,11 +4,11 @@ import { RING_RADII, SEGMENT_ORDER, describeAnnulusSector, polarToCartesian, wed
 import { resolvePoint } from './hitTest'
 import { scoreHit } from './scoring'
 
-const VIEWBOX_SIZE = 480
+const VIEWBOX_SIZE = 560
 const CENTER = VIEWBOX_SIZE / 2
 const BOARD_RADIUS = 190
 /** Radius of the black rim/number ring beyond the double ring, as a fraction of BOARD_RADIUS. */
-const NUMBER_RING_OUTER = 1.12
+const NUMBER_RING_OUTER = 1.28
 
 const DARK_SINGLE = '#1a1a1a'
 const LIGHT_SINGLE = '#f0e6d2'

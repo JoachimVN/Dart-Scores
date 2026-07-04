@@ -9,6 +9,7 @@ interface PlayScreenProps {
   game: GameState
   onThrow: (throwInput: BoardThrow) => void
   onUndo: () => void
+  onNewGame: () => void
 }
 
 // Corners of the square board area sit outside the circular dartboard drawn
@@ -18,9 +19,10 @@ interface PlayScreenProps {
 // width) so the overlay text/badges shrink along with a smaller board
 // instead of overflowing into the board on narrow screens.
 const CORNER_INSET = '4%'
-const CORNER_FONT_SIZE = 'clamp(11px, 3.2cqw, 17px)'
+const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
+const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
 
-export function PlayScreen({ game, onThrow, onUndo }: PlayScreenProps) {
+export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps) {
   const { x01 } = game
   const currentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
   const scoreEntries = game.players.map((player) => {
@@ -29,8 +31,14 @@ export function PlayScreen({ game, onThrow, onUndo }: PlayScreenProps) {
     return { id: player.id, name: player.name, remaining }
   })
 
-  const bustMessage =
-    x01.currentTurnThrows.length === 0 && lastCompletedTurn(x01)?.bust ? 'Bust!' : null
+  const lastTurn = lastCompletedTurn(x01)
+  const bustedPlayerId = x01.currentTurnThrows.length === 0 && lastTurn?.bust ? lastTurn.playerId : null
+
+  function handleNewGame() {
+    if (window.confirm('Start a new game? Current progress will be lost.')) {
+      onNewGame()
+    }
+  }
 
   return (
     <div
@@ -45,22 +53,14 @@ export function PlayScreen({ game, onThrow, onUndo }: PlayScreenProps) {
       <Dartboard onThrow={onThrow} />
 
       <div style={{ position: 'absolute', top: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <ScoreDisplay players={scoreEntries} currentPlayerId={currentPlayerId} />
+        <ScoreDisplay players={scoreEntries} currentPlayerId={currentPlayerId} bustedPlayerId={bustedPlayerId} />
       </div>
 
-      {bustMessage && (
-        <div
-          style={{
-            position: 'absolute',
-            top: CORNER_INSET,
-            right: CORNER_INSET,
-            fontSize: CORNER_FONT_SIZE,
-            fontWeight: 700,
-          }}
-        >
-          {bustMessage}
-        </div>
-      )}
+      <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+        <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
+          New game
+        </button>
+      </div>
 
       <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
         <TurnPanel throws={x01.currentTurnThrows} />
@@ -71,7 +71,7 @@ export function PlayScreen({ game, onThrow, onUndo }: PlayScreenProps) {
           type="button"
           onClick={onUndo}
           disabled={x01.currentTurnThrows.length === 0}
-          style={{ font: 'inherit', padding: '0.4em 0.7em', borderRadius: '0.4em' }}
+          style={CORNER_BUTTON_STYLE}
         >
           Undo
         </button>
