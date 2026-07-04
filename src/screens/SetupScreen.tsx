@@ -9,6 +9,44 @@ interface SetupScreenProps {
   onStart: (config: X01Config, players: Player[]) => void
 }
 
+interface RosterRowProps {
+  name: string
+  onMove: () => void
+  onDelete?: () => void
+}
+
+/** A name that moves the person to the other list when clicked (hover/focus signals it's clickable). */
+function RosterRow({ name, onMove, onDelete }: RosterRowProps) {
+  return (
+    <li
+      className="roster-row"
+      role="button"
+      tabIndex={0}
+      onClick={onMove}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onMove()
+        }
+      }}
+    >
+      <span>{name}</span>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label={`Delete ${name}`}
+        >
+          Delete
+        </button>
+      )}
+    </li>
+  )
+}
+
 export function SetupScreen({ onStart }: SetupScreenProps) {
   const [allUsers, setAllUsers] = useState<Player[]>(() => listPlayers())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -54,53 +92,44 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 32, width: '100%', maxWidth: 900 }}>
-      <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
-        <section>
-          <h2>Users</h2>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
-            {availableUsers.map((user) => (
-              <li key={user.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ flex: 1 }}>{user.name}</span>
-                <button type="button" onClick={() => addToGame(user.id)}>
-                  Add to game →
-                </button>
-                <button type="button" onClick={() => deleteUser(user.id, user.name)} aria-label={`Remove ${user.name}`}>
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
-              placeholder="New user name"
+    <form onSubmit={handleSubmit} style={{ display: 'flex', width: '100%', maxWidth: 900, gap: 16 }}>
+      <section style={{ flex: '0 0 25%', minWidth: 0 }}>
+        <h2>Users</h2>
+        <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
+          {availableUsers.map((user) => (
+            <RosterRow
+              key={user.id}
+              name={user.name}
+              onMove={() => addToGame(user.id)}
+              onDelete={() => deleteUser(user.id, user.name)}
             />
-            <button type="button" onClick={addUser}>
-              Add user
-            </button>
-          </div>
-        </section>
+          ))}
+        </ul>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={newUserName}
+            onChange={(e) => setNewUserName(e.target.value)}
+            placeholder="New user name"
+            style={{ minWidth: 0, flex: 1 }}
+          />
+          <button type="button" onClick={addUser}>
+            Add
+          </button>
+        </div>
+      </section>
 
-        <section>
-          <h2>Players ({players.length})</h2>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {players.length === 0 && (
-              <li style={{ color: 'var(--border)' }}>Add users from the left to play this game.</li>
-            )}
-            {players.map((player) => (
-              <li key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button type="button" onClick={() => removeFromGame(player.id)}>
-                  ← Remove
-                </button>
-                <span style={{ flex: 1 }}>{player.name}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
+      <section style={{ flex: '0 0 25%', minWidth: 0 }}>
+        <h2>Players ({players.length})</h2>
+        <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {players.length === 0 && (
+            <li style={{ color: 'var(--border)' }}>Click a user to add them here.</li>
+          )}
+          {players.map((player) => (
+            <RosterRow key={player.id} name={player.name} onMove={() => removeFromGame(player.id)} />
+          ))}
+        </ul>
+      </section>
 
       <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
         <h1>Dart Scores</h1>

@@ -2,10 +2,28 @@
   --text: #1a1a1a;
   --bg: #ffffff;
   --border: #e5e4e7;
+  --hover-bg: #f0f0f2;
   color-scheme: light;
   font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
+}
+
+.roster-row {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.roster-row:hover,
+.roster-row:focus-visible {
+  background: var(--hover-bg);
 }
 
 * {
