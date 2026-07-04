@@ -15,6 +15,7 @@ interface PlayScreenProps {
   canRedo: boolean
   redoneThrow: Throw | null
   onNewGame: () => void
+  onRestart: () => void
   useDartNotation: boolean
 }
 
@@ -39,6 +40,7 @@ export function PlayScreen({
   canRedo,
   redoneThrow,
   onNewGame,
+  onRestart,
   useDartNotation,
 }: PlayScreenProps) {
   const { x01 } = game
@@ -100,9 +102,15 @@ export function PlayScreen({
   // so the last player's hits stay visible until the next turn's first dart.
   const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
 
-  function handleReset() {
-    if (window.confirm('Reset this game? Current progress will be lost.')) {
+  function handleQuit() {
+    if (window.confirm('Quit this game? Current progress will be lost.')) {
       onNewGame()
+    }
+  }
+
+  function handleRestart() {
+    if (window.confirm('Restart this game? Current progress will be lost.')) {
+      onRestart()
     }
   }
 
@@ -194,9 +202,21 @@ export function PlayScreen({
           redoneThrow={redoneThrow}
         />
 
-        <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <button type="button" onClick={handleReset} style={CORNER_BUTTON_STYLE}>
-            Reset
+        <div
+          style={{
+            position: 'absolute',
+            top: CORNER_INSET,
+            right: CORNER_INSET,
+            fontSize: CORNER_FONT_SIZE,
+            display: 'flex',
+            gap: '0.4em',
+          }}
+        >
+          <button type="button" onClick={handleRestart} style={CORNER_BUTTON_STYLE}>
+            Restart
+          </button>
+          <button type="button" onClick={handleQuit} style={CORNER_BUTTON_STYLE}>
+            Quit
           </button>
         </div>
 

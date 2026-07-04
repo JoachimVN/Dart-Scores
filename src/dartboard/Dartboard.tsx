@@ -45,8 +45,13 @@ export function Dartboard({ onThrow, currentTurnDartCount, undoSignal, redoneThr
 
   useEffect(() => {
     if (!redoneThrow) return
-    setMarks((prev) => [...prev, computeMarkPosition(redoneThrow)])
-  }, [redoneThrow])
+    // currentTurnDartCount === 1 here means this redone dart is the first of
+    // its turn (mirrors the currentTurnDartCount === 0 check in handleClick,
+    // just observed a step later since this reads post-redo state) - so the
+    // previous turn's marks should be cleared instead of accumulated onto.
+    const mark = computeMarkPosition(redoneThrow)
+    setMarks((prev) => (currentTurnDartCount === 1 ? [mark] : [...prev, mark]))
+  }, [redoneThrow, currentTurnDartCount])
 
   function handleClick(event: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current

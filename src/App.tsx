@@ -81,6 +81,7 @@ function App() {
         canRedo={canRedo}
         redoneThrow={lastRedoneThrow}
         onNewGame={handleNewGame}
+        onRestart={handleRematch}
         useDartNotation={settings.useDartNotation}
       />
     )

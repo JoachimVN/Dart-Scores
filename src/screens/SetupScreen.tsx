@@ -62,6 +62,10 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   function addUser() {
     const name = newUserName.trim()
     if (!name) return
+    if (allUsers.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+      window.alert(`A user named "${name}" already exists.`)
+      return
+    }
     const user: Player = { id: generateId(), name }
     upsertPlayer(user)
     setAllUsers((prev) => [...prev, user])
