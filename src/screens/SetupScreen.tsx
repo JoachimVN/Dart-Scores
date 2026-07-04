@@ -92,8 +92,21 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', width: '100%', maxWidth: 900, gap: 16 }}>
-      <section style={{ flex: '0 0 25%', minWidth: 0 }}>
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        display: 'grid',
+        // fr units, not percentages: percentage flex/grid tracks don't
+        // account for `gap`, so 25%+25%+50%+gaps overflowed past 100% and
+        // pushed the settings column past the true halfway point. 1fr 1fr 2fr
+        // divides the space left over *after* gaps, so it stays exact.
+        gridTemplateColumns: '1fr 1fr 2fr',
+        width: '100%',
+        maxWidth: 900,
+        gap: 16,
+      }}
+    >
+      <section style={{ minWidth: 0 }}>
         <h2>Users</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
@@ -119,7 +132,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         </div>
       </section>
 
-      <section style={{ flex: '0 0 25%', minWidth: 0 }}>
+      <section style={{ minWidth: 0 }}>
         <h2>Players ({players.length})</h2>
         <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {players.length === 0 && (
@@ -131,7 +144,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         </ul>
       </section>
 
-      <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
         <h1>Dart Scores</h1>
 
         <fieldset style={{ display: 'flex', gap: 16, border: 'none', padding: 0 }}>
