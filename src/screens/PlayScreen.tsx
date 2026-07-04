@@ -5,6 +5,7 @@ import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
 import type { GameState } from '../game/types'
+import { getSettings } from '../settings/settingsRepository'
 
 interface PlayScreenProps {
   game: GameState
@@ -13,34 +14,30 @@ interface PlayScreenProps {
   onNewGame: () => void
 }
 
-// Corners of the square board area sit outside the circular dartboard drawn
-// inside it, so score/turn/undo overlay those corners instead of stacking
-// below the board - keeps everything on screen without scrolling. Font size
-// is driven by container query units (cqw = % of the board wrapper's own
-// width) so the overlay text/badges shrink along with a smaller board
-// instead of overflowing into the board on narrow screens.
+// The score list lives in a sidebar to the left of the board (not overlaid
+// on it), so it can never cover the clickable board area regardless of
+// player count or screen size. Undo/New Game/current-turn darts are small
+// enough to safely sit in the square board's own corner dead-space (outside
+// the drawn circle).
 const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
 const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
-
-/** How many score rows fit the top-left corner without reaching the board - grows with the board's own pixel size. */
-function maxVisibleScoresFor(boardWidthPx: number): number {
-  if (boardWidthPx < 380) return 2
-  if (boardWidthPx < 550) return 3
-  return 4
-}
+const SIDEBAR_WIDTH = 140 // px, fixed so board sizing math stays simple; names truncate to fit
+const SIDEBAR_GAP = 12
+const ROW_HEIGHT_ESTIMATE = 44 // px, used only to decide how many rows fit before fading the rest
 
 export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps) {
   const { x01 } = game
   const currentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
+  const [useDartNotation] = useState(() => getSettings().useDartNotation)
 
-  const boardRef = useRef<HTMLDivElement>(null)
-  const [boardWidth, setBoardWidth] = useState(0)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const [sidebarHeight, setSidebarHeight] = useState(0)
 
   useEffect(() => {
-    const el = boardRef.current
+    const el = sidebarRef.current
     if (!el) return
-    const observer = new ResizeObserver((entries) => setBoardWidth(entries[0].contentRect.width))
+    const observer = new ResizeObserver((entries) => setSidebarHeight(entries[0].contentRect.height))
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
@@ -68,46 +65,46 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame }: PlayScreenProps
   }
 
   return (
-    <div
-      ref={boardRef}
-      style={{
-        position: 'relative',
-        width: 'min(90vh, 92vw, 800px)',
-        height: 'min(90vh, 92vw, 800px)',
-        margin: '0 auto',
-        containerType: 'inline-size',
-      }}
-    >
-      <Dartboard onThrow={onThrow} />
-
-      <div style={{ position: 'absolute', top: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+    <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: SIDEBAR_GAP, width: '100%' }}>
+      <div ref={sidebarRef} style={{ width: SIDEBAR_WIDTH, flexShrink: 0 }}>
         <ScoreDisplay
           players={scoreEntries}
           currentPlayerId={currentPlayerId}
           bustedPlayerId={bustedPlayerId}
-          maxVisible={maxVisibleScoresFor(boardWidth)}
+          maxVisible={Math.max(2, Math.floor(sidebarHeight / ROW_HEIGHT_ESTIMATE))}
         />
       </div>
 
-      <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
-          New game
-        </button>
-      </div>
+      <div
+        style={{
+          position: 'relative',
+          width: `min(90vh, calc(92vw - ${SIDEBAR_WIDTH + SIDEBAR_GAP}px), 800px)`,
+          height: `min(90vh, calc(92vw - ${SIDEBAR_WIDTH + SIDEBAR_GAP}px), 800px)`,
+          containerType: 'inline-size',
+        }}
+      >
+        <Dartboard onThrow={onThrow} />
 
-      <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <TurnPanel throws={x01.currentTurnThrows} />
-      </div>
+        <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+          <button type="button" onClick={handleNewGame} style={CORNER_BUTTON_STYLE}>
+            New game
+          </button>
+        </div>
 
-      <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <button
-          type="button"
-          onClick={onUndo}
-          disabled={x01.currentTurnThrows.length === 0}
-          style={CORNER_BUTTON_STYLE}
-        >
-          Undo
-        </button>
+        <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+          <TurnPanel throws={x01.currentTurnThrows} useDartNotation={useDartNotation} />
+        </div>
+
+        <div style={{ position: 'absolute', bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={x01.currentTurnThrows.length === 0}
+            style={CORNER_BUTTON_STYLE}
+          >
+            Undo
+          </button>
+        </div>
       </div>
     </div>
   )

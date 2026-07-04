@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { listPlayers, upsertPlayer } from '../players/playerRepository'
+import { getSettings, updateSettings } from '../settings/settingsRepository'
 import { generateId } from '../shared/id'
 
 interface SetupScreenProps {
@@ -19,6 +20,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   })
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
+  const [useDartNotation, setUseDartNotation] = useState(() => getSettings().useDartNotation)
 
   function updatePlayerName(id: string, name: string) {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
@@ -38,6 +40,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
     const finalized = players.map((p) => ({ ...p, name: p.name.trim() || p.name }))
     finalized.forEach(upsertPlayer)
+    updateSettings({ useDartNotation })
     onStart({ startingScore, doubleOut }, finalized)
   }
 
@@ -92,6 +95,15 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
       <label>
         <input type="checkbox" checked={doubleOut} onChange={(e) => setDoubleOut(e.target.checked)} /> Double out
+      </label>
+
+      <label>
+        <input
+          type="checkbox"
+          checked={useDartNotation}
+          onChange={(e) => setUseDartNotation(e.target.checked)}
+        />{' '}
+        Show dart notation (T20) instead of points (60)
       </label>
 
       <button type="submit">Start Game</button>
