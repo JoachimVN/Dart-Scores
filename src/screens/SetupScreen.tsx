@@ -102,7 +102,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         // divides the space left over *after* gaps, so it stays exact.
         gridTemplateColumns: '1fr 1fr 2fr',
         width: '100%',
-        maxWidth: 900,
         gap: 16,
       }}
     >

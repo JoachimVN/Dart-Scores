@@ -35,8 +35,6 @@ body {
 }
 
 #root {
-  max-width: 900px;
-  margin: 0 auto;
   min-height: 100svh;
   padding: 16px;
 }
