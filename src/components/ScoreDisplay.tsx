@@ -66,19 +66,21 @@ export function ScoreDisplay({ players, currentPlayerId, bustedPlayerId, maxVisi
   )
 
   return (
-    <ul
-      ref={listRef}
-      style={{
-        listStyle: 'none',
-        padding: 0,
-        margin: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        gap: '0.5em',
-      }}
-    >
-      {visible.map((player, index) => {
+    <div>
+      <div style={{ fontWeight: 700, fontSize: '0.85em', marginBottom: '0.5em' }}>Turn order</div>
+      <ul
+        ref={listRef}
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          gap: '0.5em',
+        }}
+      >
+        {visible.map((player, index) => {
         const isActive = player.id === currentPlayerId
         const isBusted = player.id === bustedPlayerId
         const isLastVisible = isCutoff && index === visible.length - 1
@@ -118,6 +120,7 @@ export function ScoreDisplay({ players, currentPlayerId, bustedPlayerId, maxVisi
           </li>
         )
       })}
-    </ul>
+      </ul>
+    </div>
   )
 }
