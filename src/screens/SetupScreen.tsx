@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
-import { listPlayers, upsertPlayer } from '../players/playerRepository'
+import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
 import { getSettings, updateSettings } from '../settings/settingsRepository'
 import { generateId } from '../shared/id'
 
@@ -9,104 +9,141 @@ interface SetupScreenProps {
   onStart: (config: X01Config, players: Player[]) => void
 }
 
-function makeDraftPlayer(index: number): Player {
-  return { id: generateId(), name: `Player ${index}` }
-}
-
 export function SetupScreen({ onStart }: SetupScreenProps) {
-  const [players, setPlayers] = useState<Player[]>(() => {
-    const saved = listPlayers()
-    return saved.length > 0 ? saved : [makeDraftPlayer(1)]
-  })
+  const [allUsers, setAllUsers] = useState<Player[]>(() => listPlayers())
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [newUserName, setNewUserName] = useState('')
+
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
   const [useDartNotation, setUseDartNotation] = useState(() => getSettings().useDartNotation)
 
-  function updatePlayerName(id: string, name: string) {
-    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
+  const availableUsers = allUsers.filter((u) => !selectedIds.includes(u.id))
+  const players = selectedIds.map((id) => allUsers.find((u) => u.id === id)).filter((p): p is Player => Boolean(p))
+
+  function addUser(event: React.FormEvent) {
+    event.preventDefault()
+    const name = newUserName.trim()
+    if (!name) return
+    const user: Player = { id: generateId(), name }
+    upsertPlayer(user)
+    setAllUsers((prev) => [...prev, user])
+    setNewUserName('')
   }
 
-  function addPlayer() {
-    setPlayers((prev) => [...prev, makeDraftPlayer(prev.length + 1)])
+  function deleteUser(id: string, name: string) {
+    if (!window.confirm(`Remove "${name}" from your saved users? This can't be undone.`)) return
+    removePlayer(id)
+    setAllUsers((prev) => prev.filter((u) => u.id !== id))
+    setSelectedIds((prev) => prev.filter((x) => x !== id))
   }
 
-  function removePlayer(id: string) {
-    setPlayers((prev) => prev.filter((p) => p.id !== id))
+  function addToGame(id: string) {
+    setSelectedIds((prev) => [...prev, id])
+  }
+
+  function removeFromGame(id: string) {
+    setSelectedIds((prev) => prev.filter((x) => x !== id))
   }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (players.length === 0) return
-
-    const finalized = players.map((p) => ({ ...p, name: p.name.trim() || p.name }))
-    finalized.forEach(upsertPlayer)
     updateSettings({ useDartNotation })
-    onStart({ startingScore, doubleOut }, finalized)
+    onStart({ startingScore, doubleOut }, players)
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h1>Dart Scores</h1>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {players.map((player, index) => (
-          <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-              {`Player ${index + 1} name`}
-              <input value={player.name} onChange={(e) => updatePlayerName(player.id, e.target.value)} />
-            </label>
-            <button
-              type="button"
-              onClick={() => removePlayer(player.id)}
-              disabled={players.length <= 1}
-              aria-label={`Remove ${player.name}`}
-            >
-              Remove
+    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 32, width: '100%', maxWidth: 900 }}>
+      <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
+        <section>
+          <h2>Users</h2>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {availableUsers.length === 0 && <li style={{ color: 'var(--border)' }}>No saved users yet.</li>}
+            {availableUsers.map((user) => (
+              <li key={user.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 1 }}>{user.name}</span>
+                <button type="button" onClick={() => addToGame(user.id)}>
+                  Add to game →
+                </button>
+                <button type="button" onClick={() => deleteUser(user.id, user.name)} aria-label={`Remove ${user.name}`}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+              placeholder="New user name"
+            />
+            <button type="button" onClick={addUser}>
+              Add user
             </button>
           </div>
-        ))}
+        </section>
+
+        <section>
+          <h2>Players ({players.length})</h2>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {players.length === 0 && (
+              <li style={{ color: 'var(--border)' }}>Add users from the left to play this game.</li>
+            )}
+            {players.map((player) => (
+              <li key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="button" onClick={() => removeFromGame(player.id)}>
+                  ← Remove
+                </button>
+                <span style={{ flex: 1 }}>{player.name}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
 
-      <button type="button" onClick={addPlayer}>
-        Add player
-      </button>
+      <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+        <h1>Dart Scores</h1>
 
-      <fieldset style={{ display: 'flex', gap: 16, border: 'none', padding: 0 }}>
-        <legend>Starting score</legend>
+        <fieldset style={{ display: 'flex', gap: 16, border: 'none', padding: 0 }}>
+          <legend>Starting score</legend>
+          <label>
+            <input
+              type="radio"
+              name="startingScore"
+              checked={startingScore === 501}
+              onChange={() => setStartingScore(501)}
+            />{' '}
+            501
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="startingScore"
+              checked={startingScore === 301}
+              onChange={() => setStartingScore(301)}
+            />{' '}
+            301
+          </label>
+        </fieldset>
+
+        <label>
+          <input type="checkbox" checked={doubleOut} onChange={(e) => setDoubleOut(e.target.checked)} /> Double out
+        </label>
+
         <label>
           <input
-            type="radio"
-            name="startingScore"
-            checked={startingScore === 501}
-            onChange={() => setStartingScore(501)}
+            type="checkbox"
+            checked={useDartNotation}
+            onChange={(e) => setUseDartNotation(e.target.checked)}
           />{' '}
-          501
+          Show dart notation (T20) instead of points (60)
         </label>
-        <label>
-          <input
-            type="radio"
-            name="startingScore"
-            checked={startingScore === 301}
-            onChange={() => setStartingScore(301)}
-          />{' '}
-          301
-        </label>
-      </fieldset>
 
-      <label>
-        <input type="checkbox" checked={doubleOut} onChange={(e) => setDoubleOut(e.target.checked)} /> Double out
-      </label>
-
-      <label>
-        <input
-          type="checkbox"
-          checked={useDartNotation}
-          onChange={(e) => setUseDartNotation(e.target.checked)}
-        />{' '}
-        Show dart notation (T20) instead of points (60)
-      </label>
-
-      <button type="submit">Start Game</button>
+        <button type="submit" disabled={players.length === 0}>
+          Start Game
+        </button>
+      </div>
     </form>
   )
 }

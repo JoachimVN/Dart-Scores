@@ -1,7 +1,7 @@
-import { generateId } from '../shared/id'
 import type { Player } from '../game/types'
 import { loadRoot, saveRoot } from '../storage/storage'
 
+/** The full saved local user roster (not who's playing any particular game). */
 export function listPlayers(): Player[] {
   return loadRoot().players
 }
@@ -16,12 +16,8 @@ export function upsertPlayer(player: Player): void {
   saveRoot({ ...root, players })
 }
 
-/** Returns the first stored player, creating a default local profile if none exists yet. */
-export function getOrCreateDefaultPlayer(): Player {
-  const [firstPlayer] = listPlayers()
-  if (firstPlayer) return firstPlayer
-
-  const player: Player = { id: generateId(), name: 'Player 1' }
-  upsertPlayer(player)
-  return player
+/** Permanently removes a user from the saved roster. */
+export function removePlayer(id: string): void {
+  const root = loadRoot()
+  saveRoot({ ...root, players: root.players.filter((p) => p.id !== id) })
 }

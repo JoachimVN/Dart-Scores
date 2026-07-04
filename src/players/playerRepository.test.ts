@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { getOrCreateDefaultPlayer, listPlayers, upsertPlayer } from './playerRepository'
+import { listPlayers, removePlayer, upsertPlayer } from './playerRepository'
 
 beforeEach(() => {
   localStorage.clear()
@@ -18,17 +18,17 @@ describe('upsertPlayer / listPlayers round-trip', () => {
   })
 })
 
-describe('getOrCreateDefaultPlayer', () => {
-  it('creates and persists a default player when none exists', () => {
-    const player = getOrCreateDefaultPlayer()
-    expect(player.name).toBe('Player 1')
-    expect(listPlayers()).toEqual([player])
+describe('removePlayer', () => {
+  it('permanently removes a player from the saved roster', () => {
+    upsertPlayer({ id: 'p1', name: 'Alice' })
+    upsertPlayer({ id: 'p2', name: 'Bob' })
+    removePlayer('p1')
+    expect(listPlayers()).toEqual([{ id: 'p2', name: 'Bob' }])
   })
 
-  it('returns the existing first player without creating another', () => {
+  it('is a no-op when the id is not in the roster', () => {
     upsertPlayer({ id: 'p1', name: 'Alice' })
-    const player = getOrCreateDefaultPlayer()
-    expect(player).toEqual({ id: 'p1', name: 'Alice' })
-    expect(listPlayers()).toHaveLength(1)
+    removePlayer('does-not-exist')
+    expect(listPlayers()).toEqual([{ id: 'p1', name: 'Alice' }])
   })
 })
