@@ -130,6 +130,7 @@ export function PlayScreen({ game, onThrow, onUndo, onNewGame, useDartNotation }
         <ScoreDisplay
           players={scoreEntries}
           currentPlayerId={displayedCurrentPlayerId}
+          upNextPlayerId={engineCurrentPlayerId}
           bustedPlayerId={bustedPlayerId}
           maxVisible={maxVisible}
         />
