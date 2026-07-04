@@ -45,7 +45,15 @@ export function Dartboard({ onThrow }: DartboardProps) {
       onClick={handleClick}
       role="img"
       aria-label="Dartboard"
-      style={{ display: 'block', width: '100%', height: '100%', touchAction: 'manipulation' }}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        touchAction: 'manipulation',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
     >
       <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="transparent" />
 
