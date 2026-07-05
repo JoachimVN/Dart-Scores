@@ -1,10 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
 import { generateId } from '../shared/id'
 import { Button } from '../components/ui/Button'
 import { Panel, inputClass } from '../components/ui/Panel'
+
+/**
+ * Caps a list's height and scrolls it, with a top/bottom shadow that fades in
+ * only on the edge(s) still hiding content. Native scrollbars can't be relied
+ * on for this cue - macOS Safari and Chrome both ignore CSS attempts to force
+ * an always-visible scrollbar when the OS is set to auto-hide on trackpad -
+ * so this tracks real scrollTop/scrollHeight instead (see index.css).
+ */
+function ScrollShadow({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null)
+  const [canScrollUp, setCanScrollUp] = useState(false)
+  const [canScrollDown, setCanScrollDown] = useState(false)
+
+  function updateShadows() {
+    const el = ref.current
+    if (!el) return
+    setCanScrollUp(el.scrollTop > 0)
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1)
+  }
+
+  // Content height changes as users are added/removed/moved between lists.
+  useEffect(() => {
+    updateShadows()
+  })
+
+  return (
+    <div className="relative my-2">
+      <ul
+        ref={ref}
+        onScroll={updateShadows}
+        className="flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0"
+      >
+        {children}
+      </ul>
+      <div className={'scroll-shadow-top' + (canScrollUp ? ' is-visible' : '')} />
+      <div className={'scroll-shadow-bottom' + (canScrollDown ? ' is-visible' : '')} />
+    </div>
+  )
+}
 
 interface SetupScreenProps {
   onStart: (config: X01Config, players: Player[]) => void
@@ -109,7 +148,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
     >
       <Panel title="Users" className="min-w-0">
-        <ul className="scroll-list my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
+        <ScrollShadow>
           {availableUsers.length === 0 && <li className="text-ink-muted">No saved users yet.</li>}
           {availableUsers.map((user) => (
             <RosterRow
@@ -119,7 +158,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
               onDelete={() => deleteUser(user.id, user.name)}
             />
           ))}
-        </ul>
+        </ScrollShadow>
         <div className="flex gap-2">
           <input
             className={inputClass + ' min-w-0 flex-1'}
@@ -141,12 +180,12 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       </Panel>
 
       <Panel title={`Players (${players.length})`} className="min-w-0">
-        <ul className="scroll-list my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
+        <ScrollShadow>
           {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
           {players.map((player) => (
             <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
           ))}
-        </ul>
+        </ScrollShadow>
       </Panel>
 
       <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">

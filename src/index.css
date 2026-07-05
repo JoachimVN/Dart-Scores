@@ -21,6 +21,7 @@
   --on-accent: #ffffff;
   --danger: #c62828;
   --danger-soft: #fdecea;
+  --scroll-shadow: rgba(0, 0, 0, 0.16);
   color-scheme: light;
 }
 
@@ -38,6 +39,7 @@
   --on-accent: #0b120b;
   --danger: #ef706c;
   --danger-soft: #35201f;
+  --scroll-shadow: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -72,25 +74,36 @@ html {
   background: var(--surface-app);
 }
 
-/* Reserve space for and always render a classic (non-overlay) scrollbar, so
-   scrollable lists don't rely on OS overlay-scrollbar hover/scroll gestures. */
-.scroll-list {
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+/* macOS Safari/Chrome both ignore CSS attempts to force a classic
+   always-visible scrollbar when the OS is set to auto-hide, so the visual cue
+   that a list has more content can't rely on the native scrollbar at all.
+   ScrollShadow (SetupScreen.tsx) tracks real scroll position in JS and toggles
+   `.is-visible` on these overlay edges - they must be siblings positioned over
+   the list, not painted into its background, because each row has its own
+   opaque background that would otherwise hide a shadow drawn behind it. */
+.scroll-shadow-top,
+.scroll-shadow-bottom {
+  position: absolute;
+  inset-inline: 0;
+  height: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
 }
 
-.scroll-list::-webkit-scrollbar {
-  width: 8px;
+.scroll-shadow-top.is-visible,
+.scroll-shadow-bottom.is-visible {
+  opacity: 1;
 }
 
-.scroll-list::-webkit-scrollbar-track {
-  background: transparent;
+.scroll-shadow-top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--scroll-shadow), transparent);
 }
 
-.scroll-list::-webkit-scrollbar-thumb {
-  background-color: var(--line-strong);
-  border-radius: 4px;
+.scroll-shadow-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--scroll-shadow), transparent);
 }
 
 #root {
