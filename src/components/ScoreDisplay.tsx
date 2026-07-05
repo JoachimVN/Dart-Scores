@@ -24,6 +24,7 @@ const FLIP_DURATION_MS = 280
 /** Animates entries sliding into their new position when turn order rotates (FLIP technique). */
 function useReorderAnimation(rowIds: string[], listRef: React.RefObject<HTMLUListElement | null>) {
   const prevRects = useRef(new Map<string, DOMRect>())
+  const prevContainerRect = useRef<DOMRect | null>(null)
 
   useLayoutEffect(() => {
     const container = listRef.current
@@ -35,6 +36,23 @@ function useReorderAnimation(rowIds: string[], listRef: React.RefObject<HTMLULis
       const id = rowIds[i]
       if (id) nextRects.set(id, item.getBoundingClientRect())
     })
+
+    // If the list itself moved (e.g. the sidebar's board-aligned marginTop
+    // settling after mount, or a window resize), every row shifts together -
+    // that's a layout change, not a turn rotation, so animating it would
+    // slide rows out of the sidebar's clipped box. Only animate when rows
+    // moved relative to a stationary container.
+    const containerRect = container.getBoundingClientRect()
+    const prevContainer = prevContainerRect.current
+    prevContainerRect.current = containerRect
+    const containerMoved =
+      !prevContainer ||
+      Math.abs(prevContainer.top - containerRect.top) > 0.5 ||
+      Math.abs(prevContainer.left - containerRect.left) > 0.5
+    if (containerMoved) {
+      prevRects.current = nextRects
+      return
+    }
 
     items.forEach((item, i) => {
       const id = rowIds[i]
