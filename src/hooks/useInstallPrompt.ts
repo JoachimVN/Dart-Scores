@@ -22,11 +22,11 @@ export function useInstallPrompt() {
     function handleAppInstalled() {
       setDeferredPrompt(null)
     }
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('appinstalled', handleAppInstalled)
+    globalThis.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    globalThis.addEventListener('appinstalled', handleAppInstalled)
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      window.removeEventListener('appinstalled', handleAppInstalled)
+      globalThis.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      globalThis.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [])
 

@@ -39,7 +39,7 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
 
       <div className="flex w-full snap-x gap-4 overflow-x-auto pb-2">
         {tournament.rounds.map((matchups, roundIndex) => (
-          <div key={roundIndex} className="flex min-w-[240px] flex-1 snap-start flex-col gap-3">
+          <div key={matchups.map((m) => m.id).join('-')} className="flex min-w-[240px] flex-1 snap-start flex-col gap-3">
             <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-ink-muted">
               {roundLabel(roundIndex, tournament.rounds.length)}
             </h2>
@@ -50,7 +50,7 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
                   <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
                     {m.players.map((slot, i) => (
                       <li
-                        key={i}
+                        key={slot.playerId ?? `bye-${i}`}
                         className={
                           'flex items-center justify-between gap-2 rounded-(--radius-md) px-2 py-1.5 ' +
                           (slot.playerId && slot.playerId === m.winnerId ? 'bg-accent-soft font-semibold' : '')

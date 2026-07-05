@@ -23,11 +23,11 @@ function RecordRow({
   label,
   record,
   formatValue = String,
-}: {
+}: Readonly<{
   label: string
   record: TournamentRecordEntry | null
   formatValue?: (value: number) => string
-}) {
+}>) {
   return (
     <>
       <dt className="text-sm text-ink-muted">{label}</dt>
@@ -95,13 +95,13 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
       <Panel title="Bracket recap" className="w-full max-w-lg">
         <div className="flex flex-col gap-4">
           {recap.map((round, i) => (
-            <div key={i}>
+            <div key={round.map((m) => `${m.playerAName}-${m.playerBName}`).join('|')}>
               <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 {i === recap.length - 1 ? 'Final' : `Round ${i + 1}`}
               </h3>
               <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-                {round.map((matchup, j) => (
-                  <li key={j} className="flex items-center justify-between gap-2 text-sm">
+                {round.map((matchup) => (
+                  <li key={`${matchup.playerAName}-${matchup.playerBName}`} className="flex items-center justify-between gap-2 text-sm">
                     <span className={matchup.winnerName === matchup.playerAName ? 'font-semibold' : 'text-ink-muted'}>
                       {matchup.playerAName}
                     </span>

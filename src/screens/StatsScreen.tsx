@@ -17,11 +17,11 @@ function LeaderboardPanel({
   title,
   entries,
   formatValue = String,
-}: {
+}: Readonly<{
   title: string
   entries: LeaderboardEntry[]
   formatValue?: (value: number) => string
-}) {
+}>) {
   return (
     <Panel title={title}>
       {entries.length === 0 ? (
@@ -41,7 +41,7 @@ function LeaderboardPanel({
   )
 }
 
-function TilesPanel({ tiles }: { tiles: [string, string][] }) {
+function TilesPanel({ tiles }: Readonly<{ tiles: [string, string][] }>) {
   return (
     <Panel>
       <div className="grid grid-cols-2 gap-3">
@@ -56,7 +56,7 @@ function TilesPanel({ tiles }: { tiles: [string, string][] }) {
   )
 }
 
-function TrendPanel({ title, trend }: { title: string; trend: StatsPoint[] }) {
+function TrendPanel({ title, trend }: Readonly<{ title: string; trend: StatsPoint[] }>) {
   return (
     <Panel title={title}>
       <div className="h-48 w-full">
@@ -88,7 +88,7 @@ function TrendPanel({ title, trend }: { title: string; trend: StatsPoint[] }) {
   )
 }
 
-function X01Section({ stats }: { stats: X01PlayerStats }) {
+function X01Section({ stats }: Readonly<{ stats: X01PlayerStats }>) {
   if (stats.gamesPlayed === 0) return null
   const tiles: [string, string][] = [
     ['Games played', String(stats.gamesPlayed)],
@@ -116,7 +116,7 @@ function X01Section({ stats }: { stats: X01PlayerStats }) {
   )
 }
 
-function CricketSection({ stats }: { stats: CricketPlayerStats }) {
+function CricketSection({ stats }: Readonly<{ stats: CricketPlayerStats }>) {
   if (stats.gamesPlayed === 0) return null
   const tiles: [string, string][] = [
     ['Games played', String(stats.gamesPlayed)],
@@ -142,7 +142,7 @@ function CricketSection({ stats }: { stats: CricketPlayerStats }) {
   )
 }
 
-export function StatsScreen({ onBack }: StatsScreenProps) {
+export function StatsScreen({ onBack }: Readonly<StatsScreenProps>) {
   const [players] = useState(() => listPlayers())
   const [selectedId, setSelectedId] = useState<string | null>(players[0]?.id ?? null)
   const [tab, setTab] = useState<'player' | 'all-time'>('player')
@@ -192,7 +192,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
                 </select>
               </label>
 
-              {stats && stats.x01.gamesPlayed === 0 && stats.cricket.gamesPlayed === 0 && (
+              {stats?.x01.gamesPlayed === 0 && stats.cricket.gamesPlayed === 0 && (
                 <p className="text-sm text-ink-muted">No games recorded yet.</p>
               )}
 

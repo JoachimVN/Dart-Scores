@@ -56,7 +56,7 @@ function findMatchupLocation(tournament: Tournament, matchupId: string): { round
 
 function replaceMatchup(tournament: Tournament, round: number, index: number, matchup: Matchup): Tournament {
   const rounds = tournament.rounds.map((matchups, r) =>
-    r !== round ? matchups : matchups.map((m, i) => (i !== index ? m : matchup)),
+    r === round ? matchups.map((m, i) => (i === index ? matchup : m)) : matchups,
   )
   return { ...tournament, rounds, updatedAt: Date.now() }
 }
@@ -179,8 +179,8 @@ export function findMatchupForPlayers(tournament: Tournament, playerIds: string[
   for (const matchups of tournament.rounds) {
     for (const matchup of matchups) {
       if (matchup.status === 'complete') continue
-      const ids = matchup.players.map((slot) => slot.playerId)
-      if (ids.includes(a) && ids.includes(b)) return matchup
+      const ids = new Set(matchup.players.map((slot) => slot.playerId))
+      if (ids.has(a) && ids.has(b)) return matchup
     }
   }
   return null
@@ -207,8 +207,11 @@ export function standings(tournament: Tournament): Player[] {
   const seen = new Set<string>()
 
   if (tournament.championId) {
-    result.push(playerById.get(tournament.championId)!)
-    seen.add(tournament.championId)
+    const champion = playerById.get(tournament.championId)
+    if (champion) {
+      result.push(champion)
+      seen.add(tournament.championId)
+    }
   }
 
   for (let round = tournament.rounds.length - 1; round >= 0; round--) {
@@ -216,8 +219,11 @@ export function standings(tournament: Tournament): Player[] {
       if (matchup.status !== 'complete' || !matchup.winnerId) continue
       const loserId = matchup.players.find((slot) => slot.playerId && slot.playerId !== matchup.winnerId)?.playerId
       if (loserId && !seen.has(loserId)) {
-        result.push(playerById.get(loserId)!)
-        seen.add(loserId)
+        const loser = playerById.get(loserId)
+        if (loser) {
+          result.push(loser)
+          seen.add(loserId)
+        }
       }
     }
   }

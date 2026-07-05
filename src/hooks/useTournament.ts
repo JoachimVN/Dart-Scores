@@ -39,7 +39,7 @@ export function useTournament(activeLeg: GameState | null) {
   // useGame's recordedGameIds guard.
   const recordedLegIds = useRef(new Set<string>())
   useEffect(() => {
-    if (!tournament || !activeLeg || activeLeg.status !== 'complete') return
+    if (!tournament || activeLeg?.status !== 'complete') return
     if (recordedLegIds.current.has(activeLeg.id)) return
 
     const matchup = findMatchupForPlayers(

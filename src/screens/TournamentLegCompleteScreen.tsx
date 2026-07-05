@@ -27,7 +27,12 @@ function buildLegStats(game: GameState, useDartNotation: boolean): LegStats {
     const summary = buildX01GameSummary(game)
     const winnerSummary = summary.players.find((p) => p.won)
     const checkoutThrow = winnerSummary?.throws.at(-1)
-    const checkoutLabel = checkoutThrow ? (useDartNotation ? checkoutThrow.label : String(checkoutThrow.value)) : '-'
+    let checkoutLabel: string
+    if (checkoutThrow) {
+      checkoutLabel = useDartNotation ? checkoutThrow.label : String(checkoutThrow.value)
+    } else {
+      checkoutLabel = '-'
+    }
     return {
       turnsPlayed: winnerSummary?.turnsPlayed ?? 0,
       secondLabel: 'Checkout',
