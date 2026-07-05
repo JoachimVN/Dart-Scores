@@ -1,32 +1,54 @@
-# React + TypeScript + Vite
+# Dart Scores
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A client-only scorer for X01 dart games (301/501), built with React 19, TypeScript, and Vite. No backend - everything is persisted to `localStorage`.
 
-Currently, two official plugins are available:
+Live at [joavn.dev/dart-scores](https://joavn.dev/dart-scores).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- X01 scoring (301 or 501, single or double out) for any number of players
+- A saved roster of users you can pick from game to game, plus per-game player selection
+- Undo/redo for thrown darts, with keyboard shortcuts
+- Checkout suggestions
+- Per-player statistics across games
+- Light/dark/system theme
+- Responsive layout for phone-sized screens
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting started
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev       # start the Vite dev server
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Commands
+
+```bash
+npm run dev        # start Vite dev server
+npm run build       # tsc -b type-check, then vite build
+npm run lint        # oxlint
+npm test            # vitest (watch mode)
+npm test -- run      # vitest single run
+npm run preview     # serve the production build locally
+```
+
+There is no separate typecheck script; `npm run build` is the source of truth for type errors (`tsc -b` before the Vite build).
+
+## Architecture
+
+```
+dartboard/   SVG board rendering + pure geometry/hit-testing (no game rules)
+game/        Pure game-rule engines (x01, checkout), no React, no storage
+storage/     localStorage read/write + versioned migrations
+players/, settings/, stats/   Repositories built on storage/ for each persisted slice
+hooks/       useGame wires the x01 engine to storage + React state
+screens/, components/   UI
+```
+
+Data flows one way: `Dartboard` click → `hitTest.ts` resolves (segment, ring, value) → `PlayScreen` calls `onThrow` → `useGame.throwDart` → `x01Engine.applyThrow` (pure reducer) → new `GameState` → `gameRepository.saveActiveGame` persists it → React re-renders.
+
+See `CLAUDE.md` for a deeper dive into the dartboard geometry, the X01 engine's turn/undo model, and the storage/migration scheme.
+
+## Deploying
+
+This app has no backend of its own but is published as a static build to [joavn.dev/dart-scores](https://joavn.dev/dart-scores), embedded in a separate `Portfolio` repo. `.github/workflows/sync-portfolio.yml` builds with `--base=/dart-scores/` on every push to `main` (when `src/**` or build config changes) and pushes the built `dist/` into the `Portfolio` repo. `sync-portfolio.sh` does the same thing locally/manually.
