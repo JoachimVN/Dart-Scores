@@ -3,6 +3,8 @@ import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
 import { generateId } from '../shared/id'
+import { Button } from '../components/ui/Button'
+import { Panel, inputClass } from '../components/ui/Panel'
 
 interface SetupScreenProps {
   onStart: (config: X01Config, players: Player[]) => void
@@ -12,15 +14,22 @@ interface SetupScreenProps {
 
 interface RosterRowProps {
   name: string
+  /** Tints the row with the accent to mark it as picked for the game. */
+  selected?: boolean
   onMove: () => void
   onDelete?: () => void
 }
 
 /** A name that moves the person to the other list when clicked (hover/focus signals it's clickable). */
-function RosterRow({ name, onMove, onDelete }: RosterRowProps) {
+function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) {
   return (
     <li
-      className="roster-row"
+      className={
+        'flex cursor-pointer items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-colors ' +
+        (selected
+          ? 'border-accent/40 bg-accent-soft hover:border-accent/70'
+          : 'border-line bg-card hover:bg-sunken focus-visible:bg-sunken')
+      }
       role="button"
       tabIndex={0}
       onClick={onMove}
@@ -31,10 +40,11 @@ function RosterRow({ name, onMove, onDelete }: RosterRowProps) {
         }
       }}
     >
-      <span>{name}</span>
+      <span className="truncate font-medium">{name}</span>
       {onDelete && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
@@ -42,7 +52,7 @@ function RosterRow({ name, onMove, onDelete }: RosterRowProps) {
           aria-label={`Delete ${name}`}
         >
           Delete
-        </button>
+        </Button>
       )}
     </li>
   )
@@ -96,21 +106,11 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      style={{
-        display: 'grid',
-        // fr units, not percentages: percentage flex/grid tracks don't
-        // account for `gap`, so 25%+25%+50%+gaps overflowed past 100% and
-        // pushed the settings column past the true halfway point. 1fr 1fr 2fr
-        // divides the space left over *after* gaps, so it stays exact.
-        gridTemplateColumns: '1fr 1fr 2fr',
-        width: '100%',
-        gap: 16,
-      }}
+      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_1.5fr] lg:gap-6"
     >
-      <section className="roster-panel" style={{ minWidth: 0 }}>
-        <h2>Users</h2>
-        <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {availableUsers.length === 0 && <li style={{ color: 'var(--text-muted)' }}>No saved users yet.</li>}
+      <Panel title="Users" className="min-w-0">
+        <ul className="my-2 flex list-none flex-col gap-2 p-0">
+          {availableUsers.length === 0 && <li className="text-ink-muted">No saved users yet.</li>}
           {availableUsers.map((user) => (
             <RosterRow
               key={user.id}
@@ -120,8 +120,9 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
             />
           ))}
         </ul>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex gap-2">
           <input
+            className={inputClass + ' min-w-0 flex-1'}
             value={newUserName}
             onChange={(e) => setNewUserName(e.target.value)}
             onKeyDown={(e) => {
@@ -134,59 +135,58 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
               }
             }}
             placeholder="New user name"
-            style={{ minWidth: 0, flex: 1 }}
           />
-          <button type="button" onClick={addUser}>
-            Add
-          </button>
+          <Button onClick={addUser}>Add</Button>
         </div>
-      </section>
+      </Panel>
 
-      <section className="roster-panel" style={{ minWidth: 0 }}>
-        <h2>Players ({players.length})</h2>
-        <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {players.length === 0 && (
-            <li style={{ color: 'var(--text-muted)' }}>Click a user to add them here.</li>
-          )}
+      <Panel title={`Players (${players.length})`} className="min-w-0">
+        <ul className="my-2 flex list-none flex-col gap-2 p-0">
+          {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
           {players.map((player) => (
-            <RosterRow key={player.id} name={player.name} onMove={() => removeFromGame(player.id)} />
+            <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
           ))}
         </ul>
-      </section>
+      </Panel>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-        <h2>Game Settings</h2>
-
-        <fieldset style={{ display: 'flex', gap: 16, border: 'none', padding: 0 }}>
-          <legend>Starting score</legend>
-          <label>
-            <input
-              type="radio"
-              name="startingScore"
-              checked={startingScore === 501}
-              onChange={() => setStartingScore(501)}
-            />{' '}
-            501
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="startingScore"
-              checked={startingScore === 301}
-              onChange={() => setStartingScore(301)}
-            />{' '}
-            301
-          </label>
+      <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">
+        <fieldset className="m-0 border-none p-0">
+          <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
+          {/* Segmented control on top of the same radio state. */}
+          <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+            {([501, 301] as const).map((score) => (
+              <button
+                key={score}
+                type="button"
+                aria-pressed={startingScore === score}
+                onClick={() => setStartingScore(score)}
+                className={
+                  'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
+                  (startingScore === score
+                    ? 'bg-card text-ink shadow-sm'
+                    : 'bg-transparent text-ink-muted hover:text-ink')
+                }
+              >
+                {score}
+              </button>
+            ))}
+          </div>
         </fieldset>
 
-        <label>
-          <input type="checkbox" checked={doubleOut} onChange={(e) => setDoubleOut(e.target.checked)} /> Double out
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            className="size-4 accent-(--accent)"
+            checked={doubleOut}
+            onChange={(e) => setDoubleOut(e.target.checked)}
+          />
+          Double out
         </label>
 
-        <button type="submit" disabled={players.length === 0}>
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
           Start Game
-        </button>
-      </div>
+        </Button>
+      </Panel>
     </form>
   )
 }
