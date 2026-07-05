@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react'
 import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
@@ -46,9 +46,9 @@ function ScrollShadow({ children }: { readonly children: ReactNode }) {
 }
 
 interface SetupScreenProps {
-  onStart: (config: X01Config, players: Player[]) => void
+  readonly onStart: (config: X01Config, players: Player[]) => void
   /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
-  initialPlayers?: Player[]
+  readonly initialPlayers?: Player[]
 }
 
 interface RosterRowProps {
@@ -64,22 +64,19 @@ function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) {
   return (
     <li
       className={
-        'flex cursor-pointer items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-colors ' +
+        'flex items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-colors ' +
         (selected
           ? 'border-accent/40 bg-accent-soft hover:border-accent/70'
-          : 'border-line bg-card hover:bg-sunken focus-visible:bg-sunken')
+          : 'border-line bg-card hover:bg-sunken')
       }
-      role="button"
-      tabIndex={0}
-      onClick={onMove}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onMove()
-        }
-      }}
     >
-      <span className="truncate font-medium">{name}</span>
+      <button
+        type="button"
+        onClick={onMove}
+        className="min-w-0 flex-1 cursor-pointer truncate text-left font-medium outline-none focus-visible:underline"
+      >
+        {name}
+      </button>
       {onDelete && (
         <Button
           variant="ghost"
@@ -136,7 +133,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
     setSelectedIds((prev) => prev.filter((x) => x !== id))
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
     if (players.length === 0) return
     onStart({ startingScore, doubleOut }, players)
