@@ -1,4 +1,5 @@
 import { ShotsBoard } from '../dartboard/ShotsBoard'
+import { Button } from '../components/ui/Button'
 import type { GameState } from '../game/types'
 import { buildGameSummary } from '../stats/buildGameSummary'
 
@@ -12,27 +13,6 @@ interface GameOverScreenProps {
 }
 
 const MEDALS = ['🥇', '🥈', '🥉']
-
-const PRIMARY_BUTTON_STYLE = {
-  font: 'inherit',
-  fontWeight: 700,
-  padding: '0.6em 1.4em',
-  borderRadius: '0.5em',
-  border: '2px solid currentColor',
-  background: 'var(--text)',
-  color: 'var(--bg)',
-  cursor: 'pointer',
-} as const
-
-const SECONDARY_BUTTON_STYLE = {
-  font: 'inherit',
-  padding: '0.6em 1.4em',
-  borderRadius: '0.5em',
-  border: '1px solid var(--border)',
-  background: 'var(--bg)',
-  color: 'inherit',
-  cursor: 'pointer',
-} as const
 
 export function GameOverScreen({ game, useDartNotation, onRematch, onNewGame }: GameOverScreenProps) {
   const winner = game.players.find((player) => player.id === game.x01.winnerId)
@@ -99,12 +79,12 @@ export function GameOverScreen({ game, useDartNotation, onRematch, onNewGame }: 
       </div>
 
       <div style={{ display: 'flex', gap: 12 }}>
-        <button type="button" onClick={onRematch} style={PRIMARY_BUTTON_STYLE}>
+        <Button variant="primary" size="lg" onClick={onRematch}>
           Rematch
-        </button>
-        <button type="button" onClick={onNewGame} style={SECONDARY_BUTTON_STYLE}>
+        </Button>
+        <Button size="lg" onClick={onNewGame}>
           New game
-        </button>
+        </Button>
       </div>
     </div>
   )
