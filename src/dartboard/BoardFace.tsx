@@ -10,11 +10,13 @@ export const NUMBER_RING_OUTER = 1.28
 /** Empty space between the top of the square SVG and the top of the drawn rim circle, as a fraction of the rendered board size - lets other UI (e.g. a sidebar) line up with the board's visible top edge instead of its invisible square box. */
 export const BOARD_TOP_INSET_RATIO = (CENTER - NUMBER_RING_OUTER * BOARD_RADIUS) / VIEWBOX_SIZE
 
-const DARK_SINGLE = '#1a1a1a'
+const DARK_SINGLE = '#1e1e22'
 const LIGHT_SINGLE = '#f0e6d2'
 const RED_ACCENT = '#c62828'
 const GREEN_ACCENT = '#2e7d32'
-const RIM_COLOR = '#111111'
+const RIM_COLOR = '#141417'
+/** Hairline highlight on the rim's edge so the board doesn't melt into a dark page. */
+const RIM_EDGE = 'rgba(255, 255, 255, 0.14)'
 
 interface BoardFaceProps {
   svgRef?: Ref<SVGSVGElement>
@@ -36,6 +38,7 @@ export function BoardFace({ svgRef, onClick, children }: BoardFaceProps) {
       onClick={onClick}
       role="img"
       aria-label="Dartboard"
+      className="drop-shadow-lg dark:drop-shadow-none"
       style={{
         display: 'block',
         width: '100%',
@@ -48,7 +51,14 @@ export function BoardFace({ svgRef, onClick, children }: BoardFaceProps) {
     >
       <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="transparent" />
 
-      <circle cx={CENTER} cy={CENTER} r={NUMBER_RING_OUTER * BOARD_RADIUS} fill={RIM_COLOR} />
+      <circle
+        cx={CENTER}
+        cy={CENTER}
+        r={NUMBER_RING_OUTER * BOARD_RADIUS}
+        fill={RIM_COLOR}
+        stroke={RIM_EDGE}
+        strokeWidth={1}
+      />
 
       {SEGMENT_ORDER.map((segmentValue, i) => {
         const { startAngle, endAngle, centerAngle } = wedgeAngles(i)

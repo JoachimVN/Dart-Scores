@@ -76,39 +76,3 @@ html {
   min-height: 100svh;
   padding: 16px;
 }
-
-/* ---- Legacy compatibility while screens migrate to Tailwind utilities.
-   Deleted in the final cleanup phase. ---- */
-:root {
-  --text: var(--ink);
-  --text-muted: var(--ink-muted);
-  --bg: var(--surface-card);
-  --border: var(--line);
-  --hover-bg: var(--surface-sunken);
-  --panel-bg: var(--surface-card);
-}
-
-.roster-panel {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  background: var(--surface-card);
-}
-
-.roster-row {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--surface-card);
-  transition: background-color 0.15s ease;
-}
-
-.roster-row:hover,
-.roster-row:focus-visible {
-  background: var(--surface-sunken);
-}
