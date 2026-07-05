@@ -106,10 +106,10 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_1.5fr] lg:gap-6"
+      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
     >
       <Panel title="Users" className="min-w-0">
-        <ul className="my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
+        <ul className="scroll-list my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
           {availableUsers.length === 0 && <li className="text-ink-muted">No saved users yet.</li>}
           {availableUsers.map((user) => (
             <RosterRow
@@ -141,7 +141,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       </Panel>
 
       <Panel title={`Players (${players.length})`} className="min-w-0">
-        <ul className="my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
+        <ul className="scroll-list my-2 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0">
           {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
           {players.map((player) => (
             <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />

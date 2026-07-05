@@ -72,6 +72,27 @@ html {
   background: var(--surface-app);
 }
 
+/* Reserve space for and always render a classic (non-overlay) scrollbar, so
+   scrollable lists don't rely on OS overlay-scrollbar hover/scroll gestures. */
+.scroll-list {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.scroll-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-list::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+  border-radius: 4px;
+}
+
 #root {
   min-height: 100svh;
   padding: 16px;
