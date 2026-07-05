@@ -1,5 +1,6 @@
 import { getCheckoutOptions } from '../game/checkout/checkoutCalculator'
 import { ThrowBadge } from './ThrowBadge'
+import { Panel } from './ui/Panel'
 
 interface CheckoutCalculatorProps {
   remaining: number
@@ -13,22 +14,28 @@ export function CheckoutCalculator({ remaining, dartsAvailable, doubleOut }: Che
   const options = getCheckoutOptions(remaining, dartsAvailable, doubleOut, MAX_OPTIONS)
 
   return (
-    <div className="roster-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14 }}>
-      <span style={{ fontWeight: 700, fontSize: 16 }}>Checkout</span>
+    <Panel title="Checkout">
       {options.length > 0 ? (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+          {/* The first combo is the recommended one - emphasized with the accent tint. */}
           {options.map((combo, i) => (
-            <li key={i} style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: 5 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)', minWidth: '1.2em' }}>{i + 1}.</span>
+            <li
+              key={i}
+              className={
+                'flex items-center gap-1.5 ' +
+                (i === 0 ? '-mx-1.5 rounded-(--radius-sm) bg-accent-soft px-1.5 py-1' : '')
+              }
+            >
+              <span className="min-w-[1.2em] text-[13px] text-ink-muted">{i + 1}.</span>
               {combo.map((label, j) => (
-                <ThrowBadge key={j} label={label} compact />
+                <ThrowBadge key={j} label={label} compact={i !== 0} />
               ))}
             </li>
           ))}
         </ul>
       ) : (
-        <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>No checkout available</span>
+        <span className="text-sm text-ink-muted">No checkout available</span>
       )}
-    </div>
+    </Panel>
   )
 }
