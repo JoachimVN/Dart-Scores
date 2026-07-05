@@ -1,5 +1,6 @@
 import type { Ring } from '../dartboard/dartboard.types'
-import type { X01State } from './x01/x01Types'
+import type { CricketState } from './cricket/cricketTypes'
+import type { X01Config, X01State } from './x01/x01Types'
 
 export interface Throw {
   id: string
@@ -10,6 +11,7 @@ export interface Throw {
   timestamp: number
 }
 
+/** X01-only turn record - a countdown score before/after. Cricket has its own CricketTurn shape (marks/points, no single score). */
 export interface Turn {
   id: string
   playerId: string
@@ -24,15 +26,20 @@ export interface Player {
   name: string
 }
 
-export type GameMode = 'x01'
+export type GameMode = 'x01' | 'cricket'
 export type GameStatus = 'in_progress' | 'complete'
 
-export interface GameState {
+interface GameBase {
   id: string
-  mode: GameMode
   status: GameStatus
   players: Player[]
   createdAt: number
   updatedAt: number
-  x01: X01State
 }
+
+export type GameState =
+  | (GameBase & { mode: 'x01'; x01: X01State })
+  | (GameBase & { mode: 'cricket'; cricket: CricketState })
+
+/** Params needed to start a fresh game, one variant per mode - Cricket has no per-game config. */
+export type NewGameParams = { mode: 'x01'; config: X01Config; players: Player[] } | { mode: 'cricket'; players: Player[] }

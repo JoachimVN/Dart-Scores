@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { winnerIdOf } from '../game/gameSelectors'
 import type { GameState, Player } from '../game/types'
 import {
   clearActiveTournament,
@@ -47,7 +48,7 @@ export function useTournament(activeLeg: GameState | null) {
     )
     if (!matchup || matchup.status === 'complete' || matchup.legGameIds.includes(activeLeg.id)) return
 
-    const winnerId = activeLeg.x01.winnerId
+    const winnerId = winnerIdOf(activeLeg)
     if (!winnerId) return
 
     recordedLegIds.current.add(activeLeg.id)

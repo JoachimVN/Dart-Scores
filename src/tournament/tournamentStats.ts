@@ -1,5 +1,5 @@
 import type { Throw } from '../game/types'
-import type { GameSummary, PlayerGameSummary } from '../stats/types'
+import type { GameSummary } from '../stats/types'
 import type { Matchup, MatchupSlot, Tournament } from './tournamentTypes'
 
 /** Every leg GameState id played anywhere in the tournament's bracket. */
@@ -37,9 +37,15 @@ export interface TournamentRecords {
   shortestLeg: TournamentRecordEntry | null
 }
 
-function bestEntry(
-  entries: PlayerGameSummary[],
-  metric: (entry: PlayerGameSummary) => number,
+export interface CricketTournamentRecords {
+  bestMPR: TournamentRecordEntry | null
+  mostPointsInATurn: TournamentRecordEntry | null
+  fastestClose: TournamentRecordEntry | null
+}
+
+function bestEntry<T extends { playerId: string; name: string }>(
+  entries: T[],
+  metric: (entry: T) => number,
   isBetter: (value: number, current: number) => boolean,
 ): TournamentRecordEntry | null {
   let result: TournamentRecordEntry | null = null
@@ -54,9 +60,11 @@ function bestEntry(
 const higher = (value: number, current: number) => value > current
 const lower = (value: number, current: number) => value < current
 
-/** Standout stats across every leg played in the tournament, attributed to whichever player achieved them. */
+/** Standout X01 stats across every X01 leg played in the tournament, attributed to whichever player achieved them. */
 export function tournamentRecords(tournament: Tournament, history: GameSummary[]): TournamentRecords {
-  const entries = tournamentLegSummaries(tournament, history).flatMap((game) => game.players)
+  const entries = tournamentLegSummaries(tournament, history)
+    .filter((game): game is Extract<GameSummary, { mode: 'x01' }> => game.mode === 'x01')
+    .flatMap((game) => game.players)
   const winners = entries.filter((entry) => entry.won)
 
   return {
@@ -69,6 +77,21 @@ export function tournamentRecords(tournament: Tournament, history: GameSummary[]
     ),
     // Fewest darts thrown to finish a leg - only meaningful for the leg's winner.
     shortestLeg: bestEntry(winners, (entry) => entry.throws.length, lower),
+  }
+}
+
+/** Standout Cricket stats across every Cricket leg played in the tournament, attributed to whichever player achieved them. */
+export function cricketTournamentRecords(tournament: Tournament, history: GameSummary[]): CricketTournamentRecords {
+  const entries = tournamentLegSummaries(tournament, history)
+    .filter((game): game is Extract<GameSummary, { mode: 'cricket' }> => game.mode === 'cricket')
+    .flatMap((game) => game.players)
+  const winners = entries.filter((entry) => entry.won)
+
+  return {
+    bestMPR: bestEntry(entries, (entry) => (entry.turnsPlayed === 0 ? 0 : entry.marksScored / entry.turnsPlayed), higher),
+    mostPointsInATurn: bestEntry(entries, (entry) => Math.max(0, ...entry.turnPoints), higher),
+    // Fewest turns taken to close everything and win - only meaningful for the leg's winner.
+    fastestClose: bestEntry(winners, (entry) => entry.turnsPlayed, lower),
   }
 }
 

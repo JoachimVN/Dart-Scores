@@ -121,4 +121,34 @@ describe('migrations', () => {
       history: [{ ...v5Data.history[0], players: [{ ...v5Data.history[0].players[0], turnScores: [] }] }],
     })
   })
+
+  it('migrates a v6 envelope (tournament config with no mode) defaulting it to x01', () => {
+    const v6Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+      activeTournament: {
+        id: 't1',
+        status: 'in_progress',
+        config: { x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 },
+        players: [],
+        rounds: [],
+        championId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
+    expect(loadRoot()).toEqual({
+      ...v6Data,
+      activeTournament: { ...v6Data.activeTournament, config: { mode: 'x01', ...v6Data.activeTournament.config } },
+    })
+  })
+
+  it('leaves a v6 envelope with no active tournament unchanged', () => {
+    const v6Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
+    expect(loadRoot()).toEqual(v6Data)
+  })
 })

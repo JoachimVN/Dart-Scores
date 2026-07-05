@@ -10,7 +10,7 @@ import {
 } from './tournamentEngine'
 import type { TournamentConfig } from './tournamentTypes'
 
-const config: TournamentConfig = { x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 }
+const config: TournamentConfig = { mode: 'x01', x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 }
 
 function playersOf(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }))
@@ -88,7 +88,7 @@ describe('recordLegResult', () => {
 
 describe('full bracket walkthrough', () => {
   it('crowns a champion after a 4-player, best-of-1 bracket', () => {
-    const bestOfOne: TournamentConfig = { x01: config.x01, legsToWin: 1 }
+    const bestOfOne: TournamentConfig = { mode: 'x01', x01: config.x01, legsToWin: 1 }
     let tournament = createTournament(playersOf(4), bestOfOne)
 
     const firstMatchup = nextMatchup(tournament)!
@@ -122,7 +122,7 @@ describe('findMatchupForPlayers', () => {
 
 describe('findMatchupByLegGameId', () => {
   it('finds the matchup a leg belonged to even after that matchup is decided', () => {
-    const bestOfOne: TournamentConfig = { x01: config.x01, legsToWin: 1 }
+    const bestOfOne: TournamentConfig = { mode: 'x01', x01: config.x01, legsToWin: 1 }
     let tournament = createTournament(playersOf(4), bestOfOne)
     const matchup = nextMatchup(tournament)!
     const winnerId = matchup.players[0].playerId!
@@ -141,7 +141,7 @@ describe('findMatchupByLegGameId', () => {
 
 describe('standings', () => {
   it('orders champion, then runner-up, then earlier-eliminated players', () => {
-    const bestOfOne: TournamentConfig = { x01: config.x01, legsToWin: 1 }
+    const bestOfOne: TournamentConfig = { mode: 'x01', x01: config.x01, legsToWin: 1 }
     let tournament = createTournament(playersOf(4), bestOfOne)
 
     const m1 = nextMatchup(tournament)!

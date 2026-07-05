@@ -1,13 +1,13 @@
 import { useState, type SubmitEvent } from 'react'
-import type { X01Config } from '../game/x01/x01Types'
-import type { Player } from '../game/types'
+import type { NewGameParams, Player } from '../game/types'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
+import { GameModeToggle } from '../components/GameModeToggle'
 import { Panel, inputClass } from '../components/ui/Panel'
 import { RosterRow, ScrollShadow } from '../components/RosterPicker'
 
 interface SetupScreenProps {
-  readonly onStart: (config: X01Config, players: Player[]) => void
+  readonly onStart: (params: NewGameParams) => void
   /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
   readonly initialPlayers?: Player[]
 }
@@ -16,13 +16,14 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
     useRosterSelection(initialPlayers)
 
+  const [mode, setMode] = useState<NewGameParams['mode']>('x01')
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
     if (players.length === 0) return
-    onStart({ startingScore, doubleOut }, players)
+    onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, players })
   }
 
   return (
@@ -72,38 +73,49 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       </Panel>
 
       <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">
-        <fieldset className="m-0 border-none p-0">
-          <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
-          {/* Segmented control on top of the same radio state. */}
-          <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
-            {([501, 301] as const).map((score) => (
-              <button
-                key={score}
-                type="button"
-                aria-pressed={startingScore === score}
-                onClick={() => setStartingScore(score)}
-                className={
-                  'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
-                  (startingScore === score
-                    ? 'bg-card text-ink shadow-sm'
-                    : 'bg-transparent text-ink-muted hover:text-ink')
-                }
-              >
-                {score}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <GameModeToggle mode={mode} onChange={setMode} />
 
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            className="size-4 accent-(--accent)"
-            checked={doubleOut}
-            onChange={(e) => setDoubleOut(e.target.checked)}
-          />
-          <span>Double out</span>
-        </label>
+        {mode === 'x01' ? (
+          <>
+            <fieldset className="m-0 border-none p-0">
+              <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
+              {/* Segmented control on top of the same radio state. */}
+              <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+                {([501, 301] as const).map((score) => (
+                  <button
+                    key={score}
+                    type="button"
+                    aria-pressed={startingScore === score}
+                    onClick={() => setStartingScore(score)}
+                    className={
+                      'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
+                      (startingScore === score
+                        ? 'bg-card text-ink shadow-sm'
+                        : 'bg-transparent text-ink-muted hover:text-ink')
+                    }
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="size-4 accent-(--accent)"
+                checked={doubleOut}
+                onChange={(e) => setDoubleOut(e.target.checked)}
+              />
+              <span>Double out</span>
+            </label>
+          </>
+        ) : (
+          <p className="m-0 text-sm text-ink-muted">
+            Standard Cricket: 20 down to 15, plus the bull. Close each number with 3 marks, then keep hitting it to
+            score points off opponents who haven't closed it yet.
+          </p>
+        )}
 
         <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
           Start Game

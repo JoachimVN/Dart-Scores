@@ -42,14 +42,15 @@ function App() {
   // scratch, since a leg's players/config are just the current game's.
   function handleRematch() {
     if (!game) return
-    startGame(game.x01.config, game.players)
+    startGame(game.mode === 'x01' ? { mode: 'x01', config: game.x01.config, players: game.players } : { mode: 'cricket', players: game.players })
   }
 
   function handlePlayNextLeg() {
     if (!tournament || !matchup) return
     const ids = matchup.players.map((slot) => slot.playerId).filter((id): id is string => id !== null)
     const legPlayers = ids.map((id) => tournament.players.find((p) => p.id === id)!).filter(Boolean)
-    startGame(tournament.config.x01, legPlayers)
+    const { config } = tournament
+    startGame(config.mode === 'x01' ? { mode: 'x01', config: config.x01, players: legPlayers } : { mode: 'cricket', players: legPlayers })
   }
 
   function handleAbandonTournament() {
@@ -130,7 +131,7 @@ function App() {
   } else if (!game) {
     mainContent = (
       <>
-        {topBar('X01')}
+        {topBar('Setup')}
         <div className="mb-4 flex w-full max-w-[220px] gap-1 self-start rounded-(--radius-md) bg-sunken p-1">
           {(['casual', 'tournament'] as const).map((tab) => (
             <button
@@ -157,7 +158,7 @@ function App() {
   } else if (game.status === 'complete') {
     mainContent = (
       <>
-        {topBar('X01')}
+        {topBar(game.mode === 'x01' ? 'X01' : 'Cricket')}
         <GameOverScreen
           game={game}
           useDartNotation={settings.useDartNotation}

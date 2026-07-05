@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import type { GameSummary, PlayerGameSummary } from '../stats/types'
+import type { CricketPlayerGameSummary, GameSummary, X01PlayerGameSummary } from '../stats/types'
 import { createTournament, recordLegResult } from './tournamentEngine'
-import { bracketRecap, playerThrowsAcrossTournament, tournamentGameIds, tournamentRecords } from './tournamentStats'
+import {
+  bracketRecap,
+  cricketTournamentRecords,
+  playerThrowsAcrossTournament,
+  tournamentGameIds,
+  tournamentRecords,
+} from './tournamentStats'
 import type { Player } from '../game/types'
 import type { TournamentConfig } from './tournamentTypes'
 
-const config: TournamentConfig = { x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 }
+const config: TournamentConfig = { mode: 'x01', x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 }
+const cricketConfig: TournamentConfig = { mode: 'cricket', legsToWin: 2 }
 
 function playersOf(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }))
 }
 
-function makePlayerEntry(overrides: Partial<PlayerGameSummary> = {}): PlayerGameSummary {
+function makePlayerEntry(overrides: Partial<X01PlayerGameSummary> = {}): X01PlayerGameSummary {
   return {
     playerId: 'p1',
     name: 'Player 1',
@@ -25,8 +32,28 @@ function makePlayerEntry(overrides: Partial<PlayerGameSummary> = {}): PlayerGame
   }
 }
 
-function makeSummary(id: string, players: PlayerGameSummary[]): GameSummary {
+function makeSummary(id: string, players: X01PlayerGameSummary[]): GameSummary {
   return { id, mode: 'x01', startingScore: 501, doubleOut: true, completedAt: Date.now(), players }
+}
+
+function makeCricketPlayerEntry(overrides: Partial<CricketPlayerGameSummary> = {}): CricketPlayerGameSummary {
+  return {
+    playerId: 'p1',
+    name: 'Player 1',
+    won: false,
+    turnsPlayed: 0,
+    throws: [],
+    pointsScored: 0,
+    marksScored: 0,
+    numbersClosed: 0,
+    turnMarks: [],
+    turnPoints: [],
+    ...overrides,
+  }
+}
+
+function makeCricketSummary(id: string, players: CricketPlayerGameSummary[]): GameSummary {
+  return { id, mode: 'cricket', completedAt: Date.now(), players }
 }
 
 describe('tournamentGameIds / tournamentLegSummaries', () => {
@@ -109,6 +136,47 @@ describe('tournamentRecords', () => {
       most180s: null,
       bestLegAverage: null,
       shortestLeg: null,
+    })
+  })
+})
+
+describe('cricketTournamentRecords', () => {
+  it('attributes each cricket record to whichever player achieved it, across all legs, ignoring x01 legs', () => {
+    let tournament = createTournament(playersOf(4), cricketConfig)
+    const matchupA = tournament.rounds[0][0]
+    const matchupB = tournament.rounds[0][1]
+    const winnerA = matchupA.players[0].playerId!
+    const winnerB = matchupB.players[0].playerId!
+    tournament = recordLegResult(tournament, matchupA.id, winnerA, 'leg-a1')
+    tournament = recordLegResult(tournament, matchupA.id, winnerA, 'leg-a2')
+    tournament = recordLegResult(tournament, matchupB.id, winnerB, 'leg-b1')
+
+    const history: GameSummary[] = [
+      // An x01 leg mixed into history that must not affect cricket records.
+      makeSummary('unrelated-x01', [makePlayerEntry({ playerId: winnerA, pointsScored: 999 })]),
+      makeCricketSummary('leg-a1', [
+        makeCricketPlayerEntry({ playerId: winnerA, name: 'Winner A', won: true, turnsPlayed: 10, marksScored: 20, turnPoints: [0, 20, 0] }),
+      ]),
+      makeCricketSummary('leg-a2', [
+        makeCricketPlayerEntry({ playerId: winnerA, name: 'Winner A', won: true, turnsPlayed: 6, marksScored: 18, turnPoints: [60, 0] }),
+      ]),
+      makeCricketSummary('leg-b1', [
+        makeCricketPlayerEntry({ playerId: winnerB, name: 'Winner B', won: true, turnsPlayed: 9, marksScored: 15, turnPoints: [10] }),
+      ]),
+    ]
+
+    const records = cricketTournamentRecords(tournament, history)
+    expect(records.bestMPR?.playerId).toBe(winnerA) // 18/6 = 3 > 20/10 = 2 > 15/9
+    expect(records.mostPointsInATurn).toEqual({ playerId: winnerA, playerName: 'Winner A', value: 60 })
+    expect(records.fastestClose).toEqual({ playerId: winnerA, playerName: 'Winner A', value: 6 }) // fewest turns among winners
+  })
+
+  it('returns nulls when the tournament has no recorded cricket legs yet', () => {
+    const tournament = createTournament(playersOf(4), cricketConfig)
+    expect(cricketTournamentRecords(tournament, [])).toEqual({
+      bestMPR: null,
+      mostPointsInATurn: null,
+      fastestClose: null,
     })
   })
 })

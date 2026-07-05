@@ -1,11 +1,77 @@
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BOARD_TOP_INSET_RATIO, Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
 import { CheckoutCalculator } from '../components/CheckoutCalculator'
+import { CricketScoreboard } from '../components/CricketScoreboard'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
-import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
-import type { GameState } from '../game/types'
+import { lastCompletedTurn as lastCompletedCricketTurn, liveMarksAndPoints } from '../game/cricket/cricketEngine'
+import { lastCompletedTurn as lastCompletedX01Turn, liveRemaining } from '../game/x01/x01Engine'
+import type { GameState, Throw } from '../game/types'
+
+/** What PlayScreen needs to render, independent of which mode's engine produced it. */
+interface PlayViewModel {
+  engineCurrentPlayerId: string
+  currentTurnThrows: Throw[]
+  lastTurn: { playerId: string; throws: Throw[] } | null
+  bustedPlayerId: string | null
+  /** The "big number" shown per player in the sidebar - remaining score for X01, points for Cricket. */
+  valueFor: (playerId: string) => number
+  rightPanel: ReactNode
+}
+
+function buildX01ViewModel(game: Extract<GameState, { mode: 'x01' }>): PlayViewModel {
+  const { x01 } = game
+  const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
+  const isBetweenTurns = x01.currentTurnThrows.length === 0
+  const lastTurn = lastCompletedX01Turn(x01)
+
+  return {
+    engineCurrentPlayerId,
+    currentTurnThrows: x01.currentTurnThrows,
+    lastTurn,
+    bustedPlayerId: isBetweenTurns && lastTurn?.bust ? lastTurn.playerId : null,
+    valueFor: (playerId) => {
+      const playerState = x01.playerStates.find((ps) => ps.playerId === playerId)!
+      return playerId === engineCurrentPlayerId && !isBetweenTurns ? liveRemaining(x01) : playerState.remaining
+    },
+    rightPanel: (
+      <CheckoutCalculator
+        remaining={liveRemaining(x01)}
+        dartsAvailable={3 - x01.currentTurnThrows.length}
+        doubleOut={x01.config.doubleOut}
+      />
+    ),
+  }
+}
+
+function buildCricketViewModel(game: Extract<GameState, { mode: 'cricket' }>): PlayViewModel {
+  const { cricket } = game
+  const engineCurrentPlayerId = cricket.playerStates[cricket.currentPlayerIndex].playerId
+  const lastTurn = lastCompletedCricketTurn(cricket)
+  const live = liveMarksAndPoints(cricket)
+
+  const scoreboardEntries = game.players.map((player) => {
+    const playerState = cricket.playerStates.find((ps) => ps.playerId === player.id)!
+    const isLive = player.id === engineCurrentPlayerId
+    return {
+      id: player.id,
+      name: player.name,
+      marks: isLive ? live.marks : playerState.marks,
+      points: isLive ? live.points : playerState.points,
+    }
+  })
+
+  return {
+    engineCurrentPlayerId,
+    currentTurnThrows: cricket.currentTurnThrows,
+    lastTurn,
+    bustedPlayerId: null, // Cricket has no bust concept
+    valueFor: (playerId) => scoreboardEntries.find((e) => e.id === playerId)!.points,
+    rightPanel: <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} />,
+  }
+}
 
 interface PlayScreenProps {
   game: GameState
@@ -61,11 +127,10 @@ export function PlayScreen({
   onRestart,
   useDartNotation,
 }: PlayScreenProps) {
-  const { x01 } = game
-  const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
-  const isBetweenTurns = x01.currentTurnThrows.length === 0
-  const lastTurn = lastCompletedTurn(x01)
-  const canUndo = x01.currentTurnThrows.length > 0 || !!lastTurn
+  const viewModel = game.mode === 'x01' ? buildX01ViewModel(game) : buildCricketViewModel(game)
+  const { engineCurrentPlayerId, currentTurnThrows, lastTurn, bustedPlayerId, valueFor, rightPanel } = viewModel
+  const isBetweenTurns = currentTurnThrows.length === 0
+  const canUndo = currentTurnThrows.length > 0 || !!lastTurn
   const isWide = useIsWideLayout()
 
   // The dart marks/turn badges deliberately keep showing the player who just
@@ -110,20 +175,17 @@ export function PlayScreen({
     { length: playerCount },
     (_, i) => game.players[(currentPlayerIndexInList + i) % playerCount],
   )
-  const scoreEntries = rotatedPlayers.map((player) => {
-    const playerState = x01.playerStates.find((ps) => ps.playerId === player.id)!
-    const isLive = player.id === engineCurrentPlayerId && !isBetweenTurns
-    const remaining = isLive ? liveRemaining(x01) : playerState.remaining
-    return { id: player.id, name: player.name, remaining }
-  })
-
-  const bustedPlayerId = isBetweenTurns && lastTurn?.bust ? lastTurn.playerId : null
+  const scoreEntries = rotatedPlayers.map((player) => ({
+    id: player.id,
+    name: player.name,
+    remaining: valueFor(player.id),
+  }))
 
   // Between turns, currentTurnThrows is already reset to [] (and the engine
   // commits the final dart directly, so there's never an intermediate render
   // showing all 3) - fall back to the last completed turn's full throw list
   // so the last player's hits stay visible until the next turn's first dart.
-  const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
+  const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : currentTurnThrows
 
   function handleQuit() {
     if (globalThis.confirm('Quit this game? Current progress will be lost.')) {
@@ -187,11 +249,7 @@ export function PlayScreen({
         containerType: 'inline-size',
       }}
     >
-      <Dartboard
-        onThrow={onThrow}
-        currentTurnDartCount={x01.currentTurnThrows.length}
-        displayedThrows={displayedThrows}
-      />
+      <Dartboard onThrow={onThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
 
       <div
         className="absolute flex gap-[0.4em]"
@@ -248,13 +306,7 @@ export function PlayScreen({
           />
         </div>
         {boardBox}
-        <div className="w-full max-w-md">
-          <CheckoutCalculator
-            remaining={liveRemaining(x01)}
-            dartsAvailable={3 - x01.currentTurnThrows.length}
-            doubleOut={x01.config.doubleOut}
-          />
-        </div>
+        <div className="w-full max-w-md">{rightPanel}</div>
       </div>
     )
   }
@@ -284,11 +336,7 @@ export function PlayScreen({
       {boardBox}
 
       <div className="justify-self-end" style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset }}>
-        <CheckoutCalculator
-          remaining={liveRemaining(x01)}
-          dartsAvailable={3 - x01.currentTurnThrows.length}
-          doubleOut={x01.config.doubleOut}
-        />
+        {rightPanel}
       </div>
     </div>
   )

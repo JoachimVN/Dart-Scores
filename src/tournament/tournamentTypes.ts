@@ -22,11 +22,10 @@ export interface Matchup {
   winnerId: string | null
 }
 
-export interface TournamentConfig {
-  x01: X01Config
-  /** Legs needed to win a matchup, e.g. best-of-3 -> 2. */
-  legsToWin: number
-}
+/** `legsToWin`: legs needed to win a matchup, e.g. best-of-3 -> 2. */
+export type TournamentConfig =
+  | { mode: 'x01'; x01: X01Config; legsToWin: number }
+  | { mode: 'cricket'; legsToWin: number }
 
 export interface Tournament {
   id: string

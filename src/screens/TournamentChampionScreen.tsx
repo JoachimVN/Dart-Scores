@@ -3,7 +3,12 @@ import { Button } from '../components/ui/Button'
 import { Panel } from '../components/ui/Panel'
 import { listHistory } from '../stats/statsRepository'
 import { standings } from '../tournament/tournamentEngine'
-import { bracketRecap, playerThrowsAcrossTournament, tournamentRecords } from '../tournament/tournamentStats'
+import {
+  bracketRecap,
+  cricketTournamentRecords,
+  playerThrowsAcrossTournament,
+  tournamentRecords,
+} from '../tournament/tournamentStats'
 import type { TournamentRecordEntry } from '../tournament/tournamentStats'
 import type { Tournament } from '../tournament/tournamentTypes'
 
@@ -40,6 +45,7 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
   const history = listHistory()
   const championThrows = champion ? playerThrowsAcrossTournament(tournament, champion.id, history) : []
   const records = tournamentRecords(tournament, history)
+  const cricketRecords = cricketTournamentRecords(tournament, history)
   const recap = bracketRecap(tournament)
 
   return (
@@ -52,10 +58,20 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
       <div className="grid w-full grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <Panel title="Tournament records" className="w-full max-w-[280px] justify-self-center md:justify-self-end">
           <dl className="m-0 grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-2">
-            <RecordRow label="Highest checkout" record={records.highestCheckout} />
-            <RecordRow label="Most 180s" record={records.most180s} />
-            <RecordRow label="Best leg average" record={records.bestLegAverage} formatValue={(v) => v.toFixed(1)} />
-            <RecordRow label="Shortest leg" record={records.shortestLeg} formatValue={(v) => `${v} darts`} />
+            {tournament.config.mode === 'x01' ? (
+              <>
+                <RecordRow label="Highest checkout" record={records.highestCheckout} />
+                <RecordRow label="Most 180s" record={records.most180s} />
+                <RecordRow label="Best leg average" record={records.bestLegAverage} formatValue={(v) => v.toFixed(1)} />
+                <RecordRow label="Shortest leg" record={records.shortestLeg} formatValue={(v) => `${v} darts`} />
+              </>
+            ) : (
+              <>
+                <RecordRow label="Best MPR" record={cricketRecords.bestMPR} formatValue={(v) => v.toFixed(1)} />
+                <RecordRow label="Most points in a turn" record={cricketRecords.mostPointsInATurn} />
+                <RecordRow label="Fastest close" record={cricketRecords.fastestClose} formatValue={(v) => `${v} turns`} />
+              </>
+            )}
           </dl>
         </Panel>
 

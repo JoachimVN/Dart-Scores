@@ -1,8 +1,10 @@
 import { ShotsBoard } from '../dartboard/ShotsBoard'
 import { Button } from '../components/ui/Button'
 import { Panel } from '../components/ui/Panel'
-import type { GameState } from '../game/types'
-import { buildGameSummary } from '../stats/buildGameSummary'
+import { winnerIdOf } from '../game/gameSelectors'
+import type { GameState, Throw } from '../game/types'
+import { buildCricketGameSummary } from '../stats/buildCricketGameSummary'
+import { buildX01GameSummary } from '../stats/buildX01GameSummary'
 import type { Matchup, Tournament } from '../tournament/tournamentTypes'
 
 interface TournamentLegCompleteScreenProps {
@@ -13,6 +15,37 @@ interface TournamentLegCompleteScreenProps {
   readonly onContinue: () => void
 }
 
+interface LegStats {
+  turnsPlayed: number
+  secondLabel: string
+  secondValue: string
+  throws: Throw[]
+}
+
+function buildLegStats(game: GameState, useDartNotation: boolean): LegStats {
+  if (game.mode === 'x01') {
+    const summary = buildX01GameSummary(game)
+    const winnerSummary = summary.players.find((p) => p.won)
+    const checkoutThrow = winnerSummary?.throws.at(-1)
+    const checkoutLabel = checkoutThrow ? (useDartNotation ? checkoutThrow.label : String(checkoutThrow.value)) : '-'
+    return {
+      turnsPlayed: winnerSummary?.turnsPlayed ?? 0,
+      secondLabel: 'Checkout',
+      secondValue: checkoutLabel,
+      throws: winnerSummary?.throws ?? [],
+    }
+  }
+
+  const summary = buildCricketGameSummary(game)
+  const winnerSummary = summary.players.find((p) => p.won)
+  return {
+    turnsPlayed: winnerSummary?.turnsPlayed ?? 0,
+    secondLabel: 'Points scored',
+    secondValue: String(winnerSummary?.pointsScored ?? 0),
+    throws: winnerSummary?.throws ?? [],
+  }
+}
+
 export function TournamentLegCompleteScreen({
   game,
   matchup,
@@ -20,11 +53,8 @@ export function TournamentLegCompleteScreen({
   useDartNotation,
   onContinue,
 }: TournamentLegCompleteScreenProps) {
-  const winner = game.players.find((player) => player.id === game.x01.winnerId)
-  const summary = buildGameSummary(game)
-  const winnerSummary = summary.players.find((p) => p.won)
-  const checkoutThrow = winnerSummary?.throws.at(-1)
-  const checkoutLabel = checkoutThrow ? (useDartNotation ? checkoutThrow.label : String(checkoutThrow.value)) : '-'
+  const winner = game.players.find((player) => player.id === winnerIdOf(game))
+  const legStats = buildLegStats(game, useDartNotation)
 
   const playerName = (id: string | null) => (id ? (tournament.players.find((p) => p.id === id)?.name ?? '?') : 'TBD')
   const [slotA, slotB] = matchup.players
@@ -47,14 +77,14 @@ export function TournamentLegCompleteScreen({
         <Panel title="Leg stats" className="w-full max-w-[280px] justify-self-center md:justify-self-end">
           <dl className="m-0 grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-2">
             <dt className="text-sm text-ink-muted">Turns taken</dt>
-            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{winnerSummary?.turnsPlayed ?? 0}</dd>
-            <dt className="text-sm text-ink-muted">Checkout</dt>
-            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{checkoutLabel}</dd>
+            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{legStats.turnsPlayed}</dd>
+            <dt className="text-sm text-ink-muted">{legStats.secondLabel}</dt>
+            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{legStats.secondValue}</dd>
           </dl>
         </Panel>
 
         <div className="-order-1 justify-self-center md:order-none" style={{ width: 'min(60vh, 90vw, 460px)' }}>
-          <ShotsBoard throws={winnerSummary?.throws ?? []} />
+          <ShotsBoard throws={legStats.throws} />
         </div>
 
         <Panel title="Matchup" className="w-full max-w-[280px] justify-self-center md:justify-self-start">

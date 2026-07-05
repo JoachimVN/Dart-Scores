@@ -67,4 +67,23 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 6,
+    to: 7,
+    migrate: (data) => {
+      // Cricket mode's addition means GameMode is no longer x01-only, so
+      // TournamentConfig needs an explicit discriminant - existing
+      // tournaments predate it and are always x01. GameState/GameSummary
+      // already carried a literal mode: 'x01', so nothing to backfill there.
+      const root = data as { activeTournament?: { config?: Record<string, unknown> } | null }
+      if (!root.activeTournament) return root
+      return {
+        ...root,
+        activeTournament: {
+          ...root.activeTournament,
+          config: { mode: 'x01', ...root.activeTournament.config },
+        },
+      }
+    },
+  },
 ]
