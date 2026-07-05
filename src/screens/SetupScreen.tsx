@@ -145,7 +145,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
+      className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
     >
       <Panel title="Users" className="min-w-0">
         <ScrollShadow>

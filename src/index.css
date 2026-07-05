@@ -21,7 +21,6 @@
   --on-accent: #ffffff;
   --danger: #c62828;
   --danger-soft: #fdecea;
-  --scroll-shadow: rgba(0, 0, 0, 0.16);
   color-scheme: light;
 }
 
@@ -39,7 +38,6 @@
   --on-accent: #0b120b;
   --danger: #ef706c;
   --danger-soft: #35201f;
-  --scroll-shadow: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -80,15 +78,20 @@ html {
    ScrollShadow (SetupScreen.tsx) tracks real scroll position in JS and toggles
    `.is-visible` on these overlay edges - they must be siblings positioned over
    the list, not painted into its background, because each row has its own
-   opaque background that would otherwise hide a shadow drawn behind it. */
+   opaque background that would otherwise hide a fade drawn behind it.
+   Rather than a dark shadow (which reads as a cast shadow, not a theme-aware
+   surface), rows dissolve into a frosted blur of the card's own background,
+   masked so the effect itself tapers off toward the list's interior. */
 .scroll-shadow-top,
 .scroll-shadow-bottom {
   position: absolute;
   inset-inline: 0;
-  height: 20px;
+  height: 28px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 150ms ease;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 .scroll-shadow-top.is-visible,
@@ -98,12 +101,16 @@ html {
 
 .scroll-shadow-top {
   top: 0;
-  background: linear-gradient(to bottom, var(--scroll-shadow), transparent);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--surface-card) 65%, transparent), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
 .scroll-shadow-bottom {
   bottom: 0;
-  background: linear-gradient(to top, var(--scroll-shadow), transparent);
+  background: linear-gradient(to top, color-mix(in srgb, var(--surface-card) 65%, transparent), transparent);
+  -webkit-mask-image: linear-gradient(to top, black, transparent);
+  mask-image: linear-gradient(to top, black, transparent);
 }
 
 #root {
