@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { TopBar } from './components/TopBar'
+import { UpdateToast } from './components/UpdateToast'
 import type { Player } from './game/types'
 import { useGame } from './hooks/useGame'
 import { useTheme } from './hooks/useTheme'
@@ -92,6 +93,7 @@ function App() {
           Setup's in-progress Players selection survives the round trip. */}
       <div style={{ display: view === 'main' ? 'contents' : 'none' }}>{mainContent}</div>
       {view === 'stats' && <StatsScreen onBack={() => setView('main')} />}
+      <UpdateToast />
     </main>
   )
 }
