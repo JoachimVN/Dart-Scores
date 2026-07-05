@@ -1,57 +1,126 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/* Tailwind's dark: variant follows the app's data-theme attribute (set by
+   useTheme.ts from the Light/Dark/System setting), not prefers-color-scheme. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Semantic theme values. These flip with data-theme, so utilities minted from
+   them (bg-card, text-ink-muted, ...) are theme-aware without dark: prefixes. */
 :root {
-  --text: #1a1a1a;
-  --text-muted: #6b6b6b;
-  --bg: #ffffff;
-  --border: #e5e4e7;
-  --hover-bg: #f0f0f2;
-  --panel-bg: #fafafa;
+  --surface-app: #f6f7f8;
+  --surface-card: #ffffff;
+  --surface-sunken: #eef0f2;
+  --ink: #17181c;
+  --ink-muted: #63666e;
+  --line: #e3e5e8;
+  --line-strong: #c9ccd1;
+  --accent: #2e7d32;
+  --accent-hover: #276b2b;
+  --accent-soft: #e7f2e8;
+  --on-accent: #ffffff;
+  --danger: #c62828;
+  --danger-soft: #fdecea;
   color-scheme: light;
-  font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: var(--text);
-  background: var(--bg);
 }
 
 :root[data-theme='dark'] {
-  --text: #e5e5e5;
-  --text-muted: #9a9a9a;
-  --bg: #16171d;
-  --border: #2e303a;
-  --hover-bg: #242631;
-  --panel-bg: #1c1d24;
+  --surface-app: #131418;
+  --surface-card: #1b1d24;
+  --surface-sunken: #101116;
+  --ink: #e7e8ea;
+  --ink-muted: #9a9da4;
+  --line: #2c2f37;
+  --line-strong: #3d414b;
+  --accent: #5cb861;
+  --accent-hover: #6ec272;
+  --accent-soft: #1c2b1d;
+  --on-accent: #0b120b;
+  --danger: #ef706c;
+  --danger-soft: #35201f;
   color-scheme: dark;
 }
 
-.roster-panel {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  background: var(--panel-bg);
+@theme inline {
+  --color-app: var(--surface-app);
+  --color-card: var(--surface-card);
+  --color-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
 }
 
-.roster-row {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  transition: background-color 0.15s ease;
+@theme {
+  --font-sans: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --radius-sm: 6px; /* badges */
+  --radius-md: 10px; /* buttons, inputs */
+  --radius-lg: 14px; /* cards */
+  --text-score-hero: clamp(2rem, 4.5vw, 3.25rem);
+  --text-score: clamp(1.125rem, 2.2vw, 1.5rem);
 }
 
-.roster-row:hover,
-.roster-row:focus-visible {
-  background: var(--hover-bg);
+html {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--surface-app);
 }
 
-* {
-  box-sizing: border-box;
+/* macOS Safari/Chrome both ignore CSS attempts to force a classic
+   always-visible scrollbar when the OS is set to auto-hide, so the visual cue
+   that a list has more content can't rely on the native scrollbar at all.
+   ScrollShadow (SetupScreen.tsx) tracks real scroll position in JS and toggles
+   `.is-visible` on these overlay edges - they must be siblings positioned over
+   the list, not painted into its background, because each row has its own
+   opaque background that would otherwise hide a fade drawn behind it.
+   Rather than a dark shadow (which reads as a cast shadow, not a theme-aware
+   surface), rows dissolve into a frosted blur of the card's own background,
+   masked so the effect itself tapers off toward the list's interior. */
+.scroll-shadow-top,
+.scroll-shadow-bottom {
+  position: absolute;
+  inset-inline: 0;
+  height: 40px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-body {
-  margin: 0;
+.scroll-shadow-top.is-visible,
+.scroll-shadow-bottom.is-visible {
+  opacity: 1;
+}
+
+.scroll-shadow-top {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--surface-card) 92%, transparent) 0%,
+    color-mix(in srgb, var(--surface-card) 92%, transparent) 45%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 45%, transparent 100%);
+}
+
+.scroll-shadow-bottom {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--surface-card) 92%, transparent) 0%,
+    color-mix(in srgb, var(--surface-card) 92%, transparent) 45%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(to top, black 45%, transparent 100%);
+  mask-image: linear-gradient(to top, black 45%, transparent 100%);
 }
 
 #root {

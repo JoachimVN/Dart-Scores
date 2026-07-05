@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Settings, Theme } from '../storage/schema'
+import { Button } from './ui/Button'
+import { selectClass } from './ui/Panel'
 
 interface TopBarProps {
   /** Static label for now (only X01 exists); a slot ready for when more modes are added. */
@@ -25,48 +27,28 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
   }, [settingsOpen])
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-        paddingBottom: 12,
-        borderBottom: '1px solid var(--border)',
-      }}
-    >
-      <strong>{modeLabel ?? 'Dart Scores'}</strong>
+    <div className="mb-6 flex items-center justify-between border-b border-line pb-3">
+      <div className="flex items-baseline gap-2.5">
+        <span className="text-lg font-bold tracking-tight">Dart Scores</span>
+        <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+          {modeLabel ?? 'X01'}
+        </span>
+      </div>
 
-      <div style={{ display: 'flex', gap: 8, position: 'relative' }} ref={panelRef}>
-        <button type="button" onClick={onOpenStats}>
+      <div className="relative flex gap-2" ref={panelRef}>
+        <Button variant="ghost" size="sm" onClick={onOpenStats}>
           Stats
-        </button>
-        <button type="button" onClick={() => setSettingsOpen((open) => !open)}>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setSettingsOpen((open) => !open)}>
           Settings
-        </button>
+        </Button>
 
         {settingsOpen && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: 8,
-              padding: 16,
-              minWidth: 240,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              zIndex: 10,
-            }}
-          >
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              Theme
+          <div className="absolute top-full right-0 z-10 mt-2 flex w-64 flex-col gap-4 rounded-(--radius-lg) border border-line bg-card p-4 shadow-lg">
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              <span>Theme</span>
               <select
+                className={selectClass}
                 value={settings.theme}
                 onChange={(e) => onSettingsChange({ theme: e.target.value as Theme })}
               >
@@ -76,13 +58,14 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
               </select>
             </label>
 
-            <label>
+            <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
+                className="mt-0.5 accent-(--accent)"
                 checked={settings.useDartNotation}
                 onChange={(e) => onSettingsChange({ useDartNotation: e.target.checked })}
-              />{' '}
-              Show dart notation (T20) instead of points (60)
+              />
+              <span>Show dart notation (T20) instead of points (60)</span>
             </label>
           </div>
         )}

@@ -29,22 +29,20 @@ interface GameSession {
   game: GameState | null
   /** Darts popped by Undo, in replay order (last undone = last in the array) - cleared by any new throw, since that invalidates the redo history. */
   redoStack: ThrowInput[]
-  /** The dart most recently restored by Redo, if that was the last action - lets Dartboard draw its mark back (its original click position wasn't preserved through the undo). */
-  lastRedoneThrow: Throw | null
 }
 
 function initialSession(): GameSession {
-  return { game: loadActiveGame(), redoStack: [], lastRedoneThrow: null }
+  return { game: loadActiveGame(), redoStack: [] }
 }
 
 export function useGame() {
   const [session, setSession] = useState<GameSession>(initialSession)
-  const { game, redoStack, lastRedoneThrow } = session
+  const { game, redoStack } = session
 
   const startGame = useCallback((config: X01Config, players: Player[]) => {
     const next = buildGameState(config, players)
     saveActiveGame(next)
-    setSession({ game: next, redoStack: [], lastRedoneThrow: null })
+    setSession({ game: next, redoStack: [] })
   }, [])
 
   const throwDart = useCallback((throwInput: ThrowInput) => {
@@ -54,11 +52,11 @@ export function useGame() {
       const next: GameState = {
         ...current.game,
         x01,
-        status: x01.winnerId !== null ? 'complete' : 'in_progress',
+        status: x01.winnerId === null ? 'in_progress' : 'complete',
         updatedAt: Date.now(),
       }
       saveActiveGame(next)
-      return { game: next, redoStack: [], lastRedoneThrow: null }
+      return { game: next, redoStack: [] }
     })
   }, [])
 
@@ -86,38 +84,34 @@ export function useGame() {
       const next: GameState = {
         ...current.game,
         x01,
-        status: x01.winnerId !== null ? 'complete' : 'in_progress',
+        status: x01.winnerId === null ? 'in_progress' : 'complete',
         updatedAt: Date.now(),
       }
       saveActiveGame(next)
       const redoStack = removed ? [...current.redoStack, toThrowInput(removed)] : current.redoStack
-      return { game: next, redoStack, lastRedoneThrow: null }
+      return { game: next, redoStack }
     })
   }, [])
 
   const redo = useCallback(() => {
     setSession((current) => {
       if (!current.game || current.redoStack.length === 0) return current
-      const throwInput = current.redoStack[current.redoStack.length - 1]
+      const throwInput = current.redoStack.at(-1)!
       const x01 = applyThrow(current.game.x01, throwInput)
       const next: GameState = {
         ...current.game,
         x01,
-        status: x01.winnerId !== null ? 'complete' : 'in_progress',
+        status: x01.winnerId === null ? 'in_progress' : 'complete',
         updatedAt: Date.now(),
       }
       saveActiveGame(next)
-      return {
-        game: next,
-        redoStack: current.redoStack.slice(0, -1),
-        lastRedoneThrow: lastThrow(x01),
-      }
+      return { game: next, redoStack: current.redoStack.slice(0, -1) }
     })
   }, [])
 
   const newGame = useCallback(() => {
     clearActiveGame()
-    setSession({ game: null, redoStack: [], lastRedoneThrow: null })
+    setSession({ game: null, redoStack: [] })
   }, [])
 
   return {
@@ -128,6 +122,5 @@ export function useGame() {
     redo,
     newGame,
     canRedo: redoStack.length > 0,
-    lastRedoneThrow,
   }
 }

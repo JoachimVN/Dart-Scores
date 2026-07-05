@@ -10,13 +10,15 @@ interface TurnPanelProps {
 
 export function TurnPanel({ throws, useDartNotation, playerName }: TurnPanelProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2em' }}>
-      <span style={{ fontSize: '0.75em', fontWeight: 600, color: 'var(--text-muted)' }}>{playerName}</span>
-      <div style={{ display: 'flex', gap: '0.3em' }}>
+    <div className="flex flex-col gap-[0.2em]">
+      <span className="max-w-[10em] truncate text-[0.75em] font-semibold uppercase tracking-wide text-ink-muted">
+        {playerName}
+      </span>
+      <div className="flex gap-[0.3em]">
         {[0, 1, 2].map((i) => {
           const dart = throws[i]
           const label = dart ? (useDartNotation ? dart.label : String(dart.value)) : '-'
-          return <ThrowBadge key={i} label={label} />
+          return <ThrowBadge key={i} label={label} empty={!dart} />
         })}
       </div>
     </div>

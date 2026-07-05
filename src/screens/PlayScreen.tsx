@@ -5,7 +5,7 @@ import { CheckoutCalculator } from '../components/CheckoutCalculator'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn, liveRemaining } from '../game/x01/x01Engine'
-import type { GameState, Throw } from '../game/types'
+import type { GameState } from '../game/types'
 
 interface PlayScreenProps {
   game: GameState
@@ -13,8 +13,8 @@ interface PlayScreenProps {
   onUndo: () => void
   onRedo: () => void
   canRedo: boolean
-  redoneThrow: Throw | null
   onNewGame: () => void
+  onRestart: () => void
   useDartNotation: boolean
 }
 
@@ -25,11 +25,31 @@ interface PlayScreenProps {
 // the drawn circle).
 const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
-const CORNER_BUTTON_STYLE = { font: 'inherit', padding: '0.35em 0.6em', borderRadius: '0.4em' } as const
-const SIDEBAR_WIDTH = 175 // px, fixed so board sizing math stays simple; names truncate to fit
+// Preflight gives buttons `font: inherit`, so these scale with the corner's
+// cqw-clamped font size instead of a fixed px height.
+const CORNER_BUTTON_CLASS =
+  'cursor-pointer rounded-[0.4em] border border-line-strong bg-card px-[0.6em] py-[0.35em] font-medium ' +
+  'text-ink transition-colors hover:bg-sunken disabled:opacity-40 disabled:hover:bg-card'
+const SIDEBAR_WIDTH = 210 // px, fixed so board sizing math stays simple; names truncate to fit
 const SIDEBAR_GAP = 12
-const ROW_HEIGHT_ESTIMATE = 44 // px, used to decide how many rows fit before fading the rest
+// Estimated rendered heights (incl. gap) used to decide how many score rows
+// fit before fading the rest: one hero card for the current player, compact
+// rows for everyone else.
+const HERO_HEIGHT_ESTIMATE = 104
+const ROW_HEIGHT_ESTIMATE = 54
 const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rather than fill all available height
+
+/** True at >= 1024px: the side-by-side sidebar/board/checkout layout fits. Below it everything stacks. */
+function useIsWideLayout() {
+  const [isWide, setIsWide] = useState(() => globalThis.matchMedia('(min-width: 1024px)').matches)
+  useEffect(() => {
+    const mq = globalThis.matchMedia('(min-width: 1024px)')
+    const onChange = (event: MediaQueryListEvent) => setIsWide(event.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return isWide
+}
 
 export function PlayScreen({
   game,
@@ -37,8 +57,8 @@ export function PlayScreen({
   onUndo,
   onRedo,
   canRedo,
-  redoneThrow,
   onNewGame,
+  onRestart,
   useDartNotation,
 }: PlayScreenProps) {
   const { x01 } = game
@@ -46,6 +66,7 @@ export function PlayScreen({
   const isBetweenTurns = x01.currentTurnThrows.length === 0
   const lastTurn = lastCompletedTurn(x01)
   const canUndo = x01.currentTurnThrows.length > 0 || !!lastTurn
+  const isWide = useIsWideLayout()
 
   // The dart marks/turn badges deliberately keep showing the player who just
   // went until their replacement actually throws (see Dartboard/TurnPanel) -
@@ -63,7 +84,6 @@ export function PlayScreen({
   // board and force the page to scroll.
   const boardRef = useRef<HTMLDivElement>(null)
   const [boardSize, setBoardSize] = useState(0)
-  const [undoSignal, setUndoSignal] = useState(0)
 
   useEffect(() => {
     const el = boardRef.current
@@ -71,11 +91,16 @@ export function PlayScreen({
     const observer = new ResizeObserver((entries) => setBoardSize(entries[0].contentRect.width))
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+    // Re-observe when the layout flips: the board container is a different
+    // element in the stacked layout.
+  }, [isWide])
 
   const sidebarTopOffset = boardSize * BOARD_TOP_INSET_RATIO
   const sidebarAvailableHeight = Math.max(0, boardSize - sidebarTopOffset)
-  const maxVisible = Math.min(MAX_VISIBLE_SCORES, Math.max(2, Math.floor(sidebarAvailableHeight / ROW_HEIGHT_ESTIMATE)))
+  const maxVisible = Math.min(
+    MAX_VISIBLE_SCORES,
+    Math.max(2, 1 + Math.floor((sidebarAvailableHeight - HERO_HEIGHT_ESTIMATE) / ROW_HEIGHT_ESTIMATE)),
+  )
 
   // Rotate so the real current/next player sits first, then turn order after
   // them - the list visually "moves" each turn instead of jumping around.
@@ -100,16 +125,21 @@ export function PlayScreen({
   // so the last player's hits stay visible until the next turn's first dart.
   const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
 
-  function handleReset() {
-    if (window.confirm('Reset this game? Current progress will be lost.')) {
+  function handleQuit() {
+    if (globalThis.confirm('Quit this game? Current progress will be lost.')) {
       onNewGame()
+    }
+  }
+
+  function handleRestart() {
+    if (globalThis.confirm('Restart this game? Current progress will be lost.')) {
+      onRestart()
     }
   }
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return
     onUndo()
-    setUndoSignal((n) => n + 1)
   }, [canUndo, onUndo])
 
   const handleRedo = useCallback(() => {
@@ -136,37 +166,112 @@ export function PlayScreen({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    globalThis.addEventListener('keydown', handleKeyDown)
+    return () => globalThis.removeEventListener('keydown', handleKeyDown)
   }, [handleUndo, handleRedo])
+
+  // Two side columns (sidebar + checkout), not one - each needs its own
+  // width+gap reserved, or the total layout can exceed 92vw. The stacked
+  // layout has no side columns, so the board only answers to the viewport.
+  const boardWidth = isWide
+    ? `min(90vh, calc(92vw - ${2 * (SIDEBAR_WIDTH + SIDEBAR_GAP)}px), 800px)`
+    : 'min(92vw, 70vh)'
+
+  const boardBox = (
+    <div
+      ref={boardRef}
+      style={{
+        position: 'relative',
+        width: boardWidth,
+        height: boardWidth,
+        containerType: 'inline-size',
+      }}
+    >
+      <Dartboard
+        onThrow={onThrow}
+        currentTurnDartCount={x01.currentTurnThrows.length}
+        displayedThrows={displayedThrows}
+      />
+
+      <div
+        className="absolute flex gap-[0.4em]"
+        style={{ top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
+      >
+        <button type="button" onClick={handleRestart} className={CORNER_BUTTON_CLASS}>
+          Restart
+        </button>
+        <button type="button" onClick={handleQuit} className={CORNER_BUTTON_CLASS}>
+          Quit
+        </button>
+      </div>
+
+      <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+        <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
+      </div>
+
+      <div
+        className="absolute flex gap-[0.4em]"
+        style={{ bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
+      >
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={!canUndo}
+          className={CORNER_BUTTON_CLASS}
+          title="Undo (← or Ctrl+Z)"
+        >
+          ← Undo
+        </button>
+        <button
+          type="button"
+          onClick={handleRedo}
+          disabled={!canRedo}
+          className={CORNER_BUTTON_CLASS}
+          title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
+        >
+          Redo →
+        </button>
+      </div>
+    </div>
+  )
+
+  if (!isWide) {
+    // Stacked portrait/narrow layout: horizontal score strip, board, checkout.
+    return (
+      <div className="flex w-full flex-col items-center gap-4">
+        <div className="w-full">
+          <ScoreDisplay
+            players={scoreEntries}
+            currentPlayerId={engineCurrentPlayerId}
+            bustedPlayerId={bustedPlayerId}
+            layout="row"
+          />
+        </div>
+        {boardBox}
+        <div className="w-full max-w-md">
+          <CheckoutCalculator
+            remaining={liveRemaining(x01)}
+            dartsAvailable={3 - x01.currentTurnThrows.length}
+            doubleOut={x01.config.doubleOut}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     // Three-column grid, not flex+justifyContent:center - that would center the
     // (sidebar+board) group as a unit, leaving the board itself off-center. The
     // "auto" middle column always centers the board regardless of sidebar width;
-    // the empty third column balances it (and leaves room for future right-side info).
+    // minmax(0, 1fr) (not plain 1fr) lets each side track shrink below its
+    // content's min size so the board column stays centered.
     <div
-      style={{
-        display: 'grid',
-        // minmax(0, 1fr), not plain 1fr: a bare 1fr track still can't shrink
-        // below its content's min size, and the sidebar's 140px content would
-        // make the left track wider than the empty right one, pushing the
-        // "auto" board column off-center.
-        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
-        alignItems: 'start',
-        gap: SIDEBAR_GAP,
-        width: '100%',
-      }}
+      className="grid w-full items-start"
+      style={{ gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: SIDEBAR_GAP }}
     >
       <div
-        style={{
-          justifySelf: 'start',
-          width: SIDEBAR_WIDTH,
-          flexShrink: 0,
-          marginTop: sidebarTopOffset,
-          maxHeight: sidebarAvailableHeight,
-          overflow: 'hidden',
-        }}
+        className="justify-self-start overflow-hidden"
+        style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset, maxHeight: sidebarAvailableHeight }}
       >
         <ScoreDisplay
           players={scoreEntries}
@@ -176,73 +281,9 @@ export function PlayScreen({
         />
       </div>
 
-      <div
-        ref={boardRef}
-        style={{
-          position: 'relative',
-          // Two side columns (sidebar + checkout), not one - each needs its
-          // own width+gap reserved, or the total layout can exceed 92vw.
-          width: `min(90vh, calc(92vw - ${2 * (SIDEBAR_WIDTH + SIDEBAR_GAP)}px), 800px)`,
-          height: `min(90vh, calc(92vw - ${2 * (SIDEBAR_WIDTH + SIDEBAR_GAP)}px), 800px)`,
-          containerType: 'inline-size',
-        }}
-      >
-        <Dartboard
-          onThrow={onThrow}
-          currentTurnDartCount={x01.currentTurnThrows.length}
-          undoSignal={undoSignal}
-          redoneThrow={redoneThrow}
-        />
+      {boardBox}
 
-        <div style={{ position: 'absolute', top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <button type="button" onClick={handleReset} style={CORNER_BUTTON_STYLE}>
-            Reset
-          </button>
-        </div>
-
-        <div style={{ position: 'absolute', bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
-        </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            bottom: CORNER_INSET,
-            right: CORNER_INSET,
-            fontSize: CORNER_FONT_SIZE,
-            display: 'flex',
-            gap: '0.4em',
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleUndo}
-            disabled={!canUndo}
-            style={CORNER_BUTTON_STYLE}
-            title="Undo (← or Ctrl+Z)"
-          >
-            ← Undo
-          </button>
-          <button
-            type="button"
-            onClick={handleRedo}
-            disabled={!canRedo}
-            style={CORNER_BUTTON_STYLE}
-            title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
-          >
-            Redo →
-          </button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          justifySelf: 'end',
-          width: SIDEBAR_WIDTH,
-          flexShrink: 0,
-          marginTop: sidebarTopOffset,
-        }}
-      >
+      <div className="justify-self-end" style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset }}>
         <CheckoutCalculator
           remaining={liveRemaining(x01)}
           dartsAvailable={3 - x01.currentTurnThrows.length}
