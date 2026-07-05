@@ -1,8 +1,9 @@
 import type { GameState, Player } from '../game/types'
 import type { GameSummary } from '../stats/types'
+import type { Tournament } from '../tournament/tournamentTypes'
 
 export const STORAGE_KEY = 'dartscores:root'
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 7
 
 export type Theme = 'light' | 'dark' | 'system'
 
@@ -17,6 +18,7 @@ export interface PersistedRoot {
   activeGame: GameState | null
   settings: Settings
   history: GameSummary[]
+  activeTournament: Tournament | null
 }
 
 export interface PersistedEnvelope<T> {
@@ -29,5 +31,5 @@ export function defaultSettings(): Settings {
 }
 
 export function defaultRoot(): PersistedRoot {
-  return { players: [], activeGame: null, settings: defaultSettings(), history: [] }
+  return { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useInstallPrompt } from '../hooks/useInstallPrompt'
 import type { Settings, Theme } from '../storage/schema'
 import { Button } from './ui/Button'
 import { selectClass } from './ui/Panel'
@@ -14,6 +15,7 @@ interface TopBarProps {
 export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: TopBarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const { canInstall, promptInstall } = useInstallPrompt()
 
   useEffect(() => {
     if (!settingsOpen) return
@@ -36,6 +38,11 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
       </div>
 
       <div className="relative flex gap-2" ref={panelRef}>
+        {canInstall && (
+          <Button variant="ghost" size="sm" onClick={promptInstall}>
+            Install
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onOpenStats}>
           Stats
         </Button>

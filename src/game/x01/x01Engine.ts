@@ -1,5 +1,6 @@
 import { generateId } from '../../shared/id'
 import type { Player, Throw, Turn } from '../types'
+import { mostRecentTurn } from '../turnUtils'
 import type { X01Config, X01PlayerState, X01State } from './x01Types'
 
 export function createX01Game(config: X01Config, players: Player[]): X01State {
@@ -144,17 +145,5 @@ export function liveRemaining(state: X01State): number {
 
 /** The most recently completed turn across all players, or null if none has finished yet. */
 export function lastCompletedTurn(state: X01State): Turn | null {
-  let latest: Turn | null = null
-  let latestTimestamp = -Infinity
-
-  for (const playerState of state.playerStates) {
-    const turn = playerState.turns.at(-1)
-    const turnTimestamp = turn?.throws.at(-1)?.timestamp ?? -Infinity
-    if (turn && turnTimestamp > latestTimestamp) {
-      latest = turn
-      latestTimestamp = turnTimestamp
-    }
-  }
-
-  return latest
+  return mostRecentTurn(state.playerStates)
 }

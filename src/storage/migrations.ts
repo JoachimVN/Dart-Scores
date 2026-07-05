@@ -46,4 +46,44 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 4,
+    to: 5,
+    migrate: (data) => ({ ...(data as object), activeTournament: null }),
+  },
+  {
+    from: 5,
+    to: 6,
+    migrate: (data) => {
+      // Existing history entries predate per-turn score tracking - they just
+      // won't retroactively count toward 180/ton stats.
+      const root = data as { history?: Array<{ players?: Array<Record<string, unknown>> }> }
+      return {
+        ...root,
+        history: (root.history ?? []).map((game) => ({
+          ...game,
+          players: (game.players ?? []).map((player) => ({ ...player, turnScores: [] })),
+        })),
+      }
+    },
+  },
+  {
+    from: 6,
+    to: 7,
+    migrate: (data) => {
+      // Cricket mode's addition means GameMode is no longer x01-only, so
+      // TournamentConfig needs an explicit discriminant - existing
+      // tournaments predate it and are always x01. GameState/GameSummary
+      // already carried a literal mode: 'x01', so nothing to backfill there.
+      const root = data as { activeTournament?: { config?: Record<string, unknown> } | null }
+      if (!root.activeTournament) return root
+      return {
+        ...root,
+        activeTournament: {
+          ...root.activeTournament,
+          config: { mode: 'x01', ...root.activeTournament.config },
+        },
+      }
+    },
+  },
 ]

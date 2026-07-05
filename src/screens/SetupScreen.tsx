@@ -1,145 +1,29 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { X01Config } from '../game/x01/x01Types'
-import type { Player } from '../game/types'
-import { listPlayers, removePlayer, upsertPlayer } from '../players/playerRepository'
-import { generateId } from '../shared/id'
+import { useState, type SubmitEvent } from 'react'
+import type { NewGameParams, Player } from '../game/types'
+import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
+import { GameModeToggle } from '../components/GameModeToggle'
 import { Panel, inputClass } from '../components/ui/Panel'
-
-/**
- * Caps a list's height and scrolls it, with a top/bottom shadow that fades in
- * only on the edge(s) still hiding content. Native scrollbars can't be relied
- * on for this cue - macOS Safari and Chrome both ignore CSS attempts to force
- * an always-visible scrollbar when the OS is set to auto-hide on trackpad -
- * so this tracks real scrollTop/scrollHeight instead (see index.css).
- */
-function ScrollShadow({ children }: { readonly children: ReactNode }) {
-  const ref = useRef<HTMLUListElement>(null)
-  const [canScrollUp, setCanScrollUp] = useState(false)
-  const [canScrollDown, setCanScrollDown] = useState(false)
-
-  function updateShadows() {
-    const el = ref.current
-    if (!el) return
-    setCanScrollUp(el.scrollTop > 0)
-    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1)
-  }
-
-  // Content height changes as users are added/removed/moved between lists.
-  useEffect(() => {
-    updateShadows()
-  })
-
-  return (
-    <div className="relative my-2">
-      <ul
-        ref={ref}
-        onScroll={updateShadows}
-        className="flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0"
-      >
-        {children}
-      </ul>
-      <div className={'scroll-shadow-top' + (canScrollUp ? ' is-visible' : '')} />
-      <div className={'scroll-shadow-bottom' + (canScrollDown ? ' is-visible' : '')} />
-    </div>
-  )
-}
+import { RosterRow, ScrollShadow } from '../components/RosterPicker'
 
 interface SetupScreenProps {
-  onStart: (config: X01Config, players: Player[]) => void
+  readonly onStart: (params: NewGameParams) => void
   /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
-  initialPlayers?: Player[]
-}
-
-interface RosterRowProps {
-  readonly name: string
-  /** Tints the row with the accent to mark it as picked for the game. */
-  readonly selected?: boolean
-  readonly onMove: () => void
-  readonly onDelete?: () => void
-}
-
-/** A name that moves the person to the other list when clicked (hover/focus signals it's clickable). */
-function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) {
-  return (
-    <li
-      className={
-        'flex cursor-pointer items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-colors ' +
-        (selected
-          ? 'border-accent/40 bg-accent-soft hover:border-accent/70'
-          : 'border-line bg-card hover:bg-sunken focus-visible:bg-sunken')
-      }
-      role="button"
-      tabIndex={0}
-      onClick={onMove}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onMove()
-        }
-      }}
-    >
-      <span className="truncate font-medium">{name}</span>
-      {onDelete && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
-          aria-label={`Delete ${name}`}
-        >
-          Delete
-        </Button>
-      )}
-    </li>
-  )
+  readonly initialPlayers?: Player[]
 }
 
 export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
-  const [allUsers, setAllUsers] = useState<Player[]>(() => listPlayers())
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => initialPlayers?.map((p) => p.id) ?? [])
-  const [newUserName, setNewUserName] = useState('')
+  const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
+    useRosterSelection(initialPlayers)
 
+  const [mode, setMode] = useState<NewGameParams['mode']>('x01')
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
 
-  const availableUsers = allUsers.filter((u) => !selectedIds.includes(u.id))
-  const players = selectedIds.map((id) => allUsers.find((u) => u.id === id)).filter((p): p is Player => Boolean(p))
-
-  function addUser() {
-    const name = newUserName.trim()
-    if (!name) return
-    if (allUsers.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
-      globalThis.alert(`A user named "${name}" already exists.`)
-      return
-    }
-    const user: Player = { id: generateId(), name }
-    upsertPlayer(user)
-    setAllUsers((prev) => [...prev, user])
-    setNewUserName('')
-  }
-
-  function deleteUser(id: string, name: string) {
-    if (!globalThis.confirm(`Remove "${name}" from your saved users? This can't be undone.`)) return
-    removePlayer(id)
-    setAllUsers((prev) => prev.filter((u) => u.id !== id))
-    setSelectedIds((prev) => prev.filter((x) => x !== id))
-  }
-
-  function addToGame(id: string) {
-    setSelectedIds((prev) => [...prev, id])
-  }
-
-  function removeFromGame(id: string) {
-    setSelectedIds((prev) => prev.filter((x) => x !== id))
-  }
-
-  function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
     if (players.length === 0) return
-    onStart({ startingScore, doubleOut }, players)
+    onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, players })
   }
 
   return (
@@ -189,38 +73,49 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
       </Panel>
 
       <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">
-        <fieldset className="m-0 border-none p-0">
-          <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
-          {/* Segmented control on top of the same radio state. */}
-          <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
-            {([501, 301] as const).map((score) => (
-              <button
-                key={score}
-                type="button"
-                aria-pressed={startingScore === score}
-                onClick={() => setStartingScore(score)}
-                className={
-                  'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
-                  (startingScore === score
-                    ? 'bg-card text-ink shadow-sm'
-                    : 'bg-transparent text-ink-muted hover:text-ink')
-                }
-              >
-                {score}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <GameModeToggle mode={mode} onChange={setMode} />
 
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            className="size-4 accent-(--accent)"
-            checked={doubleOut}
-            onChange={(e) => setDoubleOut(e.target.checked)}
-          />
-          <span>Double out</span>
-        </label>
+        {mode === 'x01' ? (
+          <>
+            <fieldset className="m-0 border-none p-0">
+              <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
+              {/* Segmented control on top of the same radio state. */}
+              <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+                {([501, 301] as const).map((score) => (
+                  <button
+                    key={score}
+                    type="button"
+                    aria-pressed={startingScore === score}
+                    onClick={() => setStartingScore(score)}
+                    className={
+                      'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
+                      (startingScore === score
+                        ? 'bg-card text-ink shadow-sm'
+                        : 'bg-transparent text-ink-muted hover:text-ink')
+                    }
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="size-4 accent-(--accent)"
+                checked={doubleOut}
+                onChange={(e) => setDoubleOut(e.target.checked)}
+              />
+              <span>Double out</span>
+            </label>
+          </>
+        ) : (
+          <p className="m-0 text-sm text-ink-muted">
+            Standard Cricket: 20 down to 15, plus the bull. Close each number with 3 marks, then keep hitting it to
+            score points off opponents who haven't closed it yet.
+          </p>
+        )}
 
         <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
           Start Game

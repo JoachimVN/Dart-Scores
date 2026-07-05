@@ -29,6 +29,7 @@ describe('saveRoot / loadRoot round-trip', () => {
       activeGame: null,
       settings: { useDartNotation: false, theme: 'dark' as const },
       history: [],
+      activeTournament: null,
     }
     saveRoot(root)
     expect(loadRoot()).toEqual(root)
@@ -39,7 +40,7 @@ describe('migrations', () => {
   it('migrates a v1 envelope (no settings/history fields) all the way to the current version', () => {
     const v1Data = { players: [{ id: 'p1', name: 'Alice' }], activeGame: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 1, data: v1Data }))
-    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings(), history: [] })
+    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings(), history: [], activeTournament: null })
   })
 
   it('migrates a v2 envelope (settings present, no theme/history) preserving existing settings', () => {
@@ -54,6 +55,7 @@ describe('migrations', () => {
       activeGame: null,
       settings: { useDartNotation: false, theme: 'system' },
       history: [],
+      activeTournament: null,
     })
   })
 
@@ -76,7 +78,77 @@ describe('migrations', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 3, data: v3Data }))
     expect(loadRoot()).toEqual({
       ...v3Data,
-      history: [{ ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [] }] }],
+      history: [
+        { ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [], turnScores: [] }] },
+      ],
+      activeTournament: null,
     })
+  })
+
+  it('migrates a v4 envelope (no activeTournament field) defaulting it to null', () => {
+    const v4Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 4, data: v4Data }))
+    expect(loadRoot()).toEqual({ ...v4Data, activeTournament: null })
+  })
+
+  it('migrates a v5 envelope (no per-player turnScores) defaulting turnScores to []', () => {
+    const v5Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [
+        {
+          id: 'g1',
+          mode: 'x01',
+          startingScore: 501,
+          doubleOut: true,
+          completedAt: 1000,
+          players: [
+            { playerId: 'p1', name: 'Alice', won: true, turnsPlayed: 5, pointsScored: 501, bestCheckout: 40, throws: [] },
+          ],
+        },
+      ],
+      activeTournament: null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 5, data: v5Data }))
+    expect(loadRoot()).toEqual({
+      ...v5Data,
+      history: [{ ...v5Data.history[0], players: [{ ...v5Data.history[0].players[0], turnScores: [] }] }],
+    })
+  })
+
+  it('migrates a v6 envelope (tournament config with no mode) defaulting it to x01', () => {
+    const v6Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+      activeTournament: {
+        id: 't1',
+        status: 'in_progress',
+        config: { x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 },
+        players: [],
+        rounds: [],
+        championId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
+    expect(loadRoot()).toEqual({
+      ...v6Data,
+      activeTournament: { ...v6Data.activeTournament, config: { mode: 'x01', ...v6Data.activeTournament.config } },
+    })
+  })
+
+  it('leaves a v6 envelope with no active tournament unchanged', () => {
+    const v6Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
+    expect(loadRoot()).toEqual(v6Data)
   })
 })
