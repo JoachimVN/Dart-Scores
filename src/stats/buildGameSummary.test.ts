@@ -42,9 +42,31 @@ describe('buildGameSummary', () => {
     const alice = summary.players.find((p) => p.playerId === 'p1')!
     expect(alice).toMatchObject({ playerId: 'p1', name: 'Alice', won: false, turnsPlayed: 1, pointsScored: 0, bestCheckout: 0 })
     expect(alice.throws.map((t) => t.value)).toEqual([60])
+    // Alice's turn busted, so it scores 0 despite the 60-value dart thrown.
+    expect(alice.turnScores).toEqual([0])
 
     const bob = summary.players.find((p) => p.playerId === 'p2')!
     expect(bob).toMatchObject({ playerId: 'p2', name: 'Bob', won: true, turnsPlayed: 1, pointsScored: 40, bestCheckout: 40 })
     expect(bob.throws.map((t) => t.value)).toEqual([40])
+    expect(bob.turnScores).toEqual([40])
+  })
+
+  it('records a 0 in turnScores for a bust turn even mid-game, alongside real scores for other turns', () => {
+    let x01 = createX01Game({ startingScore: 501, doubleOut: false }, players)
+    // Alice's first turn: 3 darts of 20, scoring 60.
+    x01 = applyThrow(x01, throwOf(20))
+    x01 = applyThrow(x01, throwOf(20))
+    x01 = applyThrow(x01, throwOf(20))
+    // Bob's turn: busts by going negative.
+    x01 = applyThrow(x01, throwOf(60, 'treble', 20))
+    x01 = applyThrow(x01, throwOf(60, 'treble', 20))
+    x01 = applyThrow(x01, throwOf(501, 'treble', 20))
+
+    const summary = buildGameSummary(wrapAsGameState(x01))
+    const alice = summary.players.find((p) => p.playerId === 'p1')!
+    const bob = summary.players.find((p) => p.playerId === 'p2')!
+
+    expect(alice.turnScores).toEqual([60])
+    expect(bob.turnScores).toEqual([0])
   })
 })

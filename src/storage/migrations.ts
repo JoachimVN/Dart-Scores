@@ -51,4 +51,20 @@ export const migrations: Migration[] = [
     to: 5,
     migrate: (data) => ({ ...(data as object), activeTournament: null }),
   },
+  {
+    from: 5,
+    to: 6,
+    migrate: (data) => {
+      // Existing history entries predate per-turn score tracking - they just
+      // won't retroactively count toward 180/ton stats.
+      const root = data as { history?: Array<{ players?: Array<Record<string, unknown>> }> }
+      return {
+        ...root,
+        history: (root.history ?? []).map((game) => ({
+          ...game,
+          players: (game.players ?? []).map((player) => ({ ...player, turnScores: [] })),
+        })),
+      }
+    },
+  },
 ]

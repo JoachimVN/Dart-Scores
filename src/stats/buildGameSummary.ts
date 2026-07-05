@@ -6,10 +6,8 @@ export function buildGameSummary(game: GameState): GameSummary {
   const players: PlayerGameSummary[] = game.players.map((player) => {
     const playerState = game.x01.playerStates.find((ps) => ps.playerId === player.id)!
     const won = player.id === game.x01.winnerId
-    const pointsScored = playerState.turns.reduce(
-      (sum, turn) => sum + (turn.bust ? 0 : turn.scoreBefore - turn.scoreAfter),
-      0,
-    )
+    const turnScores = playerState.turns.map((turn) => (turn.bust ? 0 : turn.scoreBefore - turn.scoreAfter))
+    const pointsScored = turnScores.reduce((sum, score) => sum + score, 0)
     // The dart that checked them out, if they won this game.
     const bestCheckout = won ? (playerState.turns.at(-1)?.throws.at(-1)?.value ?? 0) : 0
 
@@ -21,6 +19,7 @@ export function buildGameSummary(game: GameState): GameSummary {
       pointsScored,
       bestCheckout,
       throws: playerState.turns.flatMap((turn) => turn.throws),
+      turnScores,
     }
   })
 

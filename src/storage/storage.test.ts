@@ -78,7 +78,9 @@ describe('migrations', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 3, data: v3Data }))
     expect(loadRoot()).toEqual({
       ...v3Data,
-      history: [{ ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [] }] }],
+      history: [
+        { ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [], turnScores: [] }] },
+      ],
       activeTournament: null,
     })
   })
@@ -92,5 +94,31 @@ describe('migrations', () => {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 4, data: v4Data }))
     expect(loadRoot()).toEqual({ ...v4Data, activeTournament: null })
+  })
+
+  it('migrates a v5 envelope (no per-player turnScores) defaulting turnScores to []', () => {
+    const v5Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [
+        {
+          id: 'g1',
+          mode: 'x01',
+          startingScore: 501,
+          doubleOut: true,
+          completedAt: 1000,
+          players: [
+            { playerId: 'p1', name: 'Alice', won: true, turnsPlayed: 5, pointsScored: 501, bestCheckout: 40, throws: [] },
+          ],
+        },
+      ],
+      activeTournament: null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 5, data: v5Data }))
+    expect(loadRoot()).toEqual({
+      ...v5Data,
+      history: [{ ...v5Data.history[0], players: [{ ...v5Data.history[0].players[0], turnScores: [] }] }],
+    })
   })
 })

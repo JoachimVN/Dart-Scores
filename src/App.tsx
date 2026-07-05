@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { TopBar } from './components/TopBar'
 import { UpdateToast } from './components/UpdateToast'
 import type { Player } from './game/types'
@@ -8,7 +8,6 @@ import { useTournament } from './hooks/useTournament'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { PlayScreen } from './screens/PlayScreen'
 import { SetupScreen } from './screens/SetupScreen'
-import { StatsScreen } from './screens/StatsScreen'
 import { TournamentBracketScreen } from './screens/TournamentBracketScreen'
 import { TournamentChampionScreen } from './screens/TournamentChampionScreen'
 import { TournamentLegCompleteScreen } from './screens/TournamentLegCompleteScreen'
@@ -16,6 +15,9 @@ import { TournamentSetupScreen } from './screens/TournamentSetupScreen'
 import { getSettings, updateSettings } from './settings/settingsRepository'
 import type { Settings } from './storage/schema'
 import { findMatchupByLegGameId } from './tournament/tournamentEngine'
+
+// Lazy-loaded so recharts (only needed here) doesn't bloat the main bundle.
+const StatsScreen = lazy(() => import('./screens/StatsScreen').then((m) => ({ default: m.StatsScreen })))
 
 function App() {
   const { game, startGame, throwDart, undo, redo, canRedo, newGame } = useGame()
@@ -184,7 +186,11 @@ function App() {
       {/* Kept mounted (just hidden), not unmounted, while viewing stats - so
           Setup's in-progress Players selection survives the round trip. */}
       <div style={{ display: view === 'main' ? 'contents' : 'none' }}>{mainContent}</div>
-      {view === 'stats' && <StatsScreen onBack={() => setView('main')} />}
+      {view === 'stats' && (
+        <Suspense fallback={null}>
+          <StatsScreen onBack={() => setView('main')} />
+        </Suspense>
+      )}
       <UpdateToast />
     </main>
   )

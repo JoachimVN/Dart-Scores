@@ -12,6 +12,8 @@ export interface PlayerGameSummary {
   bestCheckout: number
   /** Every dart this player threw in the game, in order - powers shot recaps/heatmaps. */
   throws: Throw[]
+  /** Points scored per completed turn, in order; 0 for a bust - powers 180/ton counts and trend charts. */
+  turnScores: number[]
 }
 
 export interface GameSummary {

@@ -3,7 +3,7 @@ import type { GameSummary } from '../stats/types'
 import type { Tournament } from '../tournament/tournamentTypes'
 
 export const STORAGE_KEY = 'dartscores:root'
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6
 
 export type Theme = 'light' | 'dark' | 'system'
 
