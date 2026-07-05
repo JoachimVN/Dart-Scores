@@ -1,5 +1,6 @@
 import { ShotsBoard } from '../dartboard/ShotsBoard'
 import { Button } from '../components/ui/Button'
+import { Panel } from '../components/ui/Panel'
 import type { GameState } from '../game/types'
 import { buildGameSummary } from '../stats/buildGameSummary'
 
@@ -32,53 +33,44 @@ export function GameOverScreen({ game, useDartNotation, onRematch, onNewGame }: 
     .slice(0, 3)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'center', width: '100%' }}>
-      <h1 style={{ margin: 0 }}>{winner ? `${winner.name} wins!` : 'Game over'}</h1>
+    <div className="flex w-full flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-sm font-semibold uppercase tracking-widest text-accent">Winner</span>
+        <h1 className="m-0 text-4xl font-bold tracking-tight md:text-5xl">
+          {winner ? winner.name : 'Game over'}
+        </h1>
+      </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
-          gap: 24,
-          alignItems: 'start',
-          width: '100%',
-        }}
-      >
-        <section className="roster-panel" style={{ justifySelf: 'end', width: '100%', maxWidth: 260 }}>
-          <h2 style={{ marginTop: 0 }}>Game stats</h2>
-          <dl style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.4em 0.8em', margin: 0 }}>
-            <dt style={{ color: 'var(--text-muted)' }}>Turns taken</dt>
-            <dd style={{ margin: 0, fontWeight: 700, textAlign: 'right' }}>{winnerSummary?.turnsPlayed ?? 0}</dd>
-            <dt style={{ color: 'var(--text-muted)' }}>Average per turn</dt>
-            <dd style={{ margin: 0, fontWeight: 700, textAlign: 'right' }}>{average.toFixed(1)}</dd>
-            <dt style={{ color: 'var(--text-muted)' }}>Checkout</dt>
-            <dd style={{ margin: 0, fontWeight: 700, textAlign: 'right' }}>{checkoutLabel}</dd>
+      <div className="grid w-full grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <Panel title="Game stats" className="w-full max-w-[280px] justify-self-center md:justify-self-end">
+          <dl className="m-0 grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-2">
+            <dt className="text-sm text-ink-muted">Turns taken</dt>
+            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{winnerSummary?.turnsPlayed ?? 0}</dd>
+            <dt className="text-sm text-ink-muted">Average per turn</dt>
+            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{average.toFixed(1)}</dd>
+            <dt className="text-sm text-ink-muted">Checkout</dt>
+            <dd className="m-0 text-right text-2xl font-bold tabular-nums">{checkoutLabel}</dd>
           </dl>
-        </section>
+        </Panel>
 
-        <div style={{ width: 'min(60vh, 90vw, 460px)' }}>
+        <div className="-order-1 justify-self-center md:order-none" style={{ width: 'min(60vh, 90vw, 460px)' }}>
           <ShotsBoard throws={winnerSummary?.throws ?? []} />
         </div>
 
-        <section className="roster-panel" style={{ justifySelf: 'start', width: '100%', maxWidth: 260 }}>
-          <h2 style={{ marginTop: 0 }}>Top 3</h2>
-          <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Panel title="Top 3" className="w-full max-w-[280px] justify-self-center md:justify-self-start">
+          <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
             {podium.map(({ player, remaining }, i) => (
-              <li key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '1.3em' }}>{MEDALS[i]}</span>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {player.name}
-                </span>
-                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {remaining === 0 ? 'Finished' : remaining}
-                </span>
+              <li key={player.id} className="flex items-center gap-2">
+                <span className="text-xl">{MEDALS[i]}</span>
+                <span className="flex-1 truncate font-medium">{player.name}</span>
+                <span className="text-ink-muted tabular-nums">{remaining === 0 ? 'Finished' : remaining}</span>
               </li>
             ))}
           </ol>
-        </section>
+        </Panel>
       </div>
 
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div className="flex gap-3">
         <Button variant="primary" size="lg" onClick={onRematch}>
           Rematch
         </Button>
