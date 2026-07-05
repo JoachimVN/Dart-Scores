@@ -2,8 +2,8 @@ import type { HTMLAttributes, ReactNode } from 'react'
 
 interface PanelProps extends HTMLAttributes<HTMLElement> {
   /** Rendered as a small uppercase card header above the content. */
-  title?: string
-  children: ReactNode
+  readonly title?: string
+  readonly children: ReactNode
 }
 
 /**

@@ -8,15 +8,15 @@ interface ScoreDisplayEntry {
 
 interface ScoreDisplayProps {
   /** Players in turn order starting with whoever is up next - rotates as turns pass. */
-  players: ScoreDisplayEntry[]
+  readonly players: ScoreDisplayEntry[]
   /** The real current/next player - always highlighted immediately, no lag. */
-  currentPlayerId: string
+  readonly currentPlayerId: string
   /** Player whose turn just ended in a bust, highlighted briefly until their next throw. */
-  bustedPlayerId?: string | null
+  readonly bustedPlayerId?: string | null
   /** Cap on visible entries; if there are more players, the last visible one fades to hint at the rest. Column layout only. */
-  maxVisible?: number
+  readonly maxVisible?: number
   /** 'column' is the desktop sidebar; 'row' is a horizontal scroll strip for narrow/portrait screens. */
-  layout?: 'column' | 'row'
+  readonly layout?: 'column' | 'row'
 }
 
 const FLIP_DURATION_MS = 280

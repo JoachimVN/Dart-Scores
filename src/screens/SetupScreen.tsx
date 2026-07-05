@@ -13,7 +13,7 @@ import { Panel, inputClass } from '../components/ui/Panel'
  * an always-visible scrollbar when the OS is set to auto-hide on trackpad -
  * so this tracks real scrollTop/scrollHeight instead (see index.css).
  */
-function ScrollShadow({ children }: { children: ReactNode }) {
+function ScrollShadow({ children }: { readonly children: ReactNode }) {
   const ref = useRef<HTMLUListElement>(null)
   const [canScrollUp, setCanScrollUp] = useState(false)
   const [canScrollDown, setCanScrollDown] = useState(false)
@@ -52,11 +52,11 @@ interface SetupScreenProps {
 }
 
 interface RosterRowProps {
-  name: string
+  readonly name: string
   /** Tints the row with the accent to mark it as picked for the game. */
-  selected?: boolean
-  onMove: () => void
-  onDelete?: () => void
+  readonly selected?: boolean
+  readonly onMove: () => void
+  readonly onDelete?: () => void
 }
 
 /** A name that moves the person to the other list when clicked (hover/focus signals it's clickable). */
@@ -112,7 +112,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
     const name = newUserName.trim()
     if (!name) return
     if (allUsers.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
-      window.alert(`A user named "${name}" already exists.`)
+      globalThis.alert(`A user named "${name}" already exists.`)
       return
     }
     const user: Player = { id: generateId(), name }
@@ -122,7 +122,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
   }
 
   function deleteUser(id: string, name: string) {
-    if (!window.confirm(`Remove "${name}" from your saved users? This can't be undone.`)) return
+    if (!globalThis.confirm(`Remove "${name}" from your saved users? This can't be undone.`)) return
     removePlayer(id)
     setAllUsers((prev) => prev.filter((u) => u.id !== id))
     setSelectedIds((prev) => prev.filter((x) => x !== id))
@@ -219,7 +219,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
             checked={doubleOut}
             onChange={(e) => setDoubleOut(e.target.checked)}
           />
-          Double out
+          <span>Double out</span>
         </label>
 
         <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>

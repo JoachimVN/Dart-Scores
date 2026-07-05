@@ -46,7 +46,7 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
         {settingsOpen && (
           <div className="absolute top-full right-0 z-10 mt-2 flex w-64 flex-col gap-4 rounded-(--radius-lg) border border-line bg-card p-4 shadow-lg">
             <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Theme
+              <span>Theme</span>
               <select
                 className={selectClass}
                 value={settings.theme}
@@ -65,7 +65,7 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
                 checked={settings.useDartNotation}
                 onChange={(e) => onSettingsChange({ useDartNotation: e.target.checked })}
               />
-              Show dart notation (T20) instead of points (60)
+              <span>Show dart notation (T20) instead of points (60)</span>
             </label>
           </div>
         )}

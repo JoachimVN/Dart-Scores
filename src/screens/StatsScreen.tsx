@@ -36,7 +36,7 @@ export function StatsScreen({ onBack }: StatsScreenProps) {
       ) : (
         <>
           <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Player
+            <span>Player</span>
             <select className={selectClass} value={selectedId ?? ''} onChange={(e) => setSelectedId(e.target.value)}>
               {players.map((player) => (
                 <option key={player.id} value={player.id}>

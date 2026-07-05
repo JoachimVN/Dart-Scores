@@ -20,7 +20,7 @@ export function CheckoutCalculator({ remaining, dartsAvailable, doubleOut }: Che
           {/* The first combo is the recommended one - emphasized with the accent tint. */}
           {options.map((combo, i) => (
             <li
-              key={i}
+              key={`${combo.join('-')}-${i}`}
               className={
                 'flex items-center gap-1.5 ' +
                 (i === 0 ? '-mx-1.5 rounded-(--radius-sm) bg-accent-soft px-1.5 py-1' : '')
@@ -28,7 +28,7 @@ export function CheckoutCalculator({ remaining, dartsAvailable, doubleOut }: Che
             >
               <span className="min-w-[1.2em] text-[13px] text-ink-muted">{i + 1}.</span>
               {combo.map((label, j) => (
-                <ThrowBadge key={j} label={label} compact={i !== 0} />
+                <ThrowBadge key={`${label}-${j}`} label={label} compact={i !== 0} />
               ))}
             </li>
           ))}

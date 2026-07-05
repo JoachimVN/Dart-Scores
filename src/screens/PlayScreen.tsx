@@ -41,9 +41,9 @@ const MAX_VISIBLE_SCORES = 6 // most darts nights are 2-4 players; cap here rath
 
 /** True at >= 1024px: the side-by-side sidebar/board/checkout layout fits. Below it everything stacks. */
 function useIsWideLayout() {
-  const [isWide, setIsWide] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [isWide, setIsWide] = useState(() => globalThis.matchMedia('(min-width: 1024px)').matches)
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = globalThis.matchMedia('(min-width: 1024px)')
     const onChange = (event: MediaQueryListEvent) => setIsWide(event.matches)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
@@ -126,13 +126,13 @@ export function PlayScreen({
   const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : x01.currentTurnThrows
 
   function handleQuit() {
-    if (window.confirm('Quit this game? Current progress will be lost.')) {
+    if (globalThis.confirm('Quit this game? Current progress will be lost.')) {
       onNewGame()
     }
   }
 
   function handleRestart() {
-    if (window.confirm('Restart this game? Current progress will be lost.')) {
+    if (globalThis.confirm('Restart this game? Current progress will be lost.')) {
       onRestart()
     }
   }
@@ -166,8 +166,8 @@ export function PlayScreen({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    globalThis.addEventListener('keydown', handleKeyDown)
+    return () => globalThis.removeEventListener('keydown', handleKeyDown)
   }, [handleUndo, handleRedo])
 
   // Two side columns (sidebar + checkout), not one - each needs its own

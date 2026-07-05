@@ -1,9 +1,9 @@
 interface ThrowBadgeProps {
-  label: string
+  readonly label: string
   /** Smaller fixed sizing for tight spaces (e.g. a 3-dart checkout combo in a narrow panel). */
-  compact?: boolean
+  readonly compact?: boolean
   /** A dart slot not thrown yet - rendered as a dashed placeholder. */
-  empty?: boolean
+  readonly empty?: boolean
 }
 
 export function ThrowBadge({ label, compact, empty }: ThrowBadgeProps) {

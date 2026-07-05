@@ -10,9 +10,9 @@ import { scoreHit } from './scoring'
 export { BOARD_TOP_INSET_RATIO } from './BoardFace'
 
 interface DartboardProps {
-  onThrow: (hit: BoardThrow) => void
+  readonly onThrow: (hit: BoardThrow) => void
   /** Darts already thrown this turn, before the upcoming click - used only to know when to clear the previous turn's click markers. */
-  currentTurnDartCount: number
+  readonly currentTurnDartCount: number
   /**
    * The darts to render marks for right now - the live in-progress turn, or
    * (between turns) the last completed one. This is the same list PlayScreen
@@ -20,7 +20,7 @@ interface DartboardProps {
    * should be on the board: undo/redo/reopening a previous turn all just
    * change this array, with no separate signal needed.
    */
-  displayedThrows: Throw[]
+  readonly displayedThrows: Throw[]
 }
 
 interface Mark {
