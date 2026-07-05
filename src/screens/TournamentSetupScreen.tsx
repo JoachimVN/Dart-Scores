@@ -1,35 +1,33 @@
 import { useState, type SubmitEvent } from 'react'
-import type { X01Config } from '../game/x01/x01Types'
 import type { Player } from '../game/types'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { Panel, inputClass } from '../components/ui/Panel'
 import { RosterRow, ScrollShadow } from '../components/RosterPicker'
+import type { TournamentConfig } from '../tournament/tournamentTypes'
 
-interface SetupScreenProps {
-  readonly onStart: (config: X01Config, players: Player[]) => void
-  /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
-  readonly initialPlayers?: Player[]
+const BEST_OF_OPTIONS = [1, 3, 5, 7] as const
+
+interface TournamentSetupScreenProps {
+  readonly onStart: (players: Player[], config: TournamentConfig) => void
 }
 
-export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
+export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
   const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
-    useRosterSelection(initialPlayers)
+    useRosterSelection()
 
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
+  const [bestOf, setBestOf] = useState<(typeof BEST_OF_OPTIONS)[number]>(3)
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length === 0) return
-    onStart({ startingScore, doubleOut }, players)
+    if (players.length < 3) return
+    onStart(players, { x01: { startingScore, doubleOut }, legsToWin: Math.ceil(bestOf / 2) })
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
-    >
+    <form onSubmit={handleSubmit} className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6">
       <Panel title="Users" className="min-w-0">
         <ScrollShadow>
           {availableUsers.length === 0 && <li className="text-ink-muted">No saved users yet.</li>}
@@ -48,9 +46,6 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
             value={newUserName}
             onChange={(e) => setNewUserName(e.target.value)}
             onKeyDown={(e) => {
-              // Without this, Enter here bubbles up to the outer form and
-              // triggers "Start Game" instead (the only submit button on the
-              // page), rather than adding the user like clicking Add would.
               if (e.key === 'Enter') {
                 e.preventDefault()
                 addUser()
@@ -64,17 +59,16 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
 
       <Panel title={`Players (${players.length})`} className="min-w-0">
         <ScrollShadow>
-          {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
+          {players.length === 0 && <li className="text-ink-muted">Click a user to add them here. Need 3+.</li>}
           {players.map((player) => (
             <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
           ))}
         </ScrollShadow>
       </Panel>
 
-      <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">
+      <Panel title="Tournament settings" className="flex min-w-0 flex-col gap-5">
         <fieldset className="m-0 border-none p-0">
           <legend className="mb-2 p-0 text-sm font-medium">Starting score</legend>
-          {/* Segmented control on top of the same radio state. */}
           <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
             {([501, 301] as const).map((score) => (
               <button
@@ -95,6 +89,26 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
           </div>
         </fieldset>
 
+        <fieldset className="m-0 border-none p-0">
+          <legend className="mb-2 p-0 text-sm font-medium">Best of (per matchup)</legend>
+          <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+            {BEST_OF_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={bestOf === option}
+                onClick={() => setBestOf(option)}
+                className={
+                  'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
+                  (bestOf === option ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-ink-muted hover:text-ink')
+                }
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
         <label className="flex items-center gap-2 text-sm font-medium">
           <input
             type="checkbox"
@@ -105,8 +119,8 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
           <span>Double out</span>
         </label>
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
-          Start Game
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length < 3}>
+          Start Tournament
         </Button>
       </Panel>
     </form>

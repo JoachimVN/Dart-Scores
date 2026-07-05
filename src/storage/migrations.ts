@@ -46,4 +46,9 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 4,
+    to: 5,
+    migrate: (data) => ({ ...(data as object), activeTournament: null }),
+  },
 ]

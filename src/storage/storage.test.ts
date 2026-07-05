@@ -29,6 +29,7 @@ describe('saveRoot / loadRoot round-trip', () => {
       activeGame: null,
       settings: { useDartNotation: false, theme: 'dark' as const },
       history: [],
+      activeTournament: null,
     }
     saveRoot(root)
     expect(loadRoot()).toEqual(root)
@@ -39,7 +40,7 @@ describe('migrations', () => {
   it('migrates a v1 envelope (no settings/history fields) all the way to the current version', () => {
     const v1Data = { players: [{ id: 'p1', name: 'Alice' }], activeGame: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 1, data: v1Data }))
-    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings(), history: [] })
+    expect(loadRoot()).toEqual({ ...v1Data, settings: defaultSettings(), history: [], activeTournament: null })
   })
 
   it('migrates a v2 envelope (settings present, no theme/history) preserving existing settings', () => {
@@ -54,6 +55,7 @@ describe('migrations', () => {
       activeGame: null,
       settings: { useDartNotation: false, theme: 'system' },
       history: [],
+      activeTournament: null,
     })
   })
 
@@ -77,6 +79,18 @@ describe('migrations', () => {
     expect(loadRoot()).toEqual({
       ...v3Data,
       history: [{ ...v3Data.history[0], players: [{ ...v3Data.history[0].players[0], throws: [] }] }],
+      activeTournament: null,
     })
+  })
+
+  it('migrates a v4 envelope (no activeTournament field) defaulting it to null', () => {
+    const v4Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 4, data: v4Data }))
+    expect(loadRoot()).toEqual({ ...v4Data, activeTournament: null })
   })
 })
