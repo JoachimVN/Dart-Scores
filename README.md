@@ -6,13 +6,34 @@ Live at [joavn.dev/dart-scores](https://joavn.dev/dart-scores).
 
 ## Features
 
-- X01 scoring (301 or 501, single or double out) for any number of players
+- X01 scoring (301 or 501, single or double out) and cricket for any number of players
 - A saved roster of users you can pick from game to game, plus per-game player selection
 - Undo/redo for thrown darts, with keyboard shortcuts
 - Checkout suggestions
 - Per-player statistics across games
 - Light/dark/system theme
 - Responsive layout for phone-sized screens
+- Tournaments of any size
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/Game.png" alt="Live game with dart board, multiple players, and checkout calculator"/>
+  <br>
+  <em>Game screen</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/Setup.png" alt="Setup screen for players, modes, and more"/>
+  <br>
+  <em>Setup screen</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/Tournament_Results.png" alt="Tournament results with statistics"/>
+  <br>
+  <em>Tournament Results</em>
+</p>
 
 ## Getting started
 
