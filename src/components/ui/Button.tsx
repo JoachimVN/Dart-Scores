@@ -34,7 +34,7 @@ const SIZES: Record<ButtonSize, string> = {
   icon: 'h-10 w-10 rounded-full shrink-0',
 }
 
-export function Button({ variant = 'secondary', size = 'md', className, type, ...rest }: ButtonProps) {
+export function Button({ variant = 'secondary', size = 'md', className, type, ...rest }: Readonly<ButtonProps>) {
   const classes = [BASE, VARIANTS[variant], SIZES[size], className].filter(Boolean).join(' ')
   return <button type={type ?? 'button'} className={classes} {...rest} />
 }
