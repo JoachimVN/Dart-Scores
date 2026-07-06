@@ -19,6 +19,12 @@ interface TournamentChampionScreenProps {
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
+/** League rounds are always numbered; a knockout's last round is called "Final" instead. */
+function roundTitle(isLeague: boolean, index: number, totalRounds: number): string {
+  if (!isLeague && index === totalRounds - 1) return 'Final'
+  return `Round ${index + 1}`
+}
+
 function RecordRow({
   label,
   record,
@@ -108,7 +114,7 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
           {recap.map((round, i) => (
             <div key={round.map((m) => `${m.playerAName}-${m.playerBName}`).join('|')}>
               <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {isLeague ? `Round ${i + 1}` : i === recap.length - 1 ? 'Final' : `Round ${i + 1}`}
+                {roundTitle(isLeague, i, recap.length)}
               </h3>
               <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
                 {round.map((matchup) => (

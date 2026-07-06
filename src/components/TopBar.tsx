@@ -13,7 +13,7 @@ interface TopBarProps {
   onResetAllData: () => void
 }
 
-export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onResetAllData }: TopBarProps) {
+export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onResetAllData }: Readonly<TopBarProps>) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const { canInstall, promptInstall } = useInstallPrompt()

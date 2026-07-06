@@ -129,7 +129,7 @@ function circleMethodRounds(playerIds: string[]): string[][][] {
       if (a !== null && b !== null) pairs.push([a, b])
     }
     rounds.push(pairs)
-    rotating = [rotating[rotating.length - 1], ...rotating.slice(0, -1)]
+    rotating = [rotating.at(-1) ?? null, ...rotating.slice(0, -1)]
   }
   return rounds
 }
@@ -281,6 +281,24 @@ export interface RoundRobinStanding {
   legsLost: number
 }
 
+/** Folds one decided matchup's result into both players' running standings; no-op if undecided. */
+function tallyMatchup(byId: Map<string, RoundRobinStanding>, m: Matchup): void {
+  if (m.status !== 'complete') return
+  const [slotA, slotB] = m.players
+  const a = slotA.playerId ? byId.get(slotA.playerId) : undefined
+  const b = slotB.playerId ? byId.get(slotB.playerId) : undefined
+  if (!a || !b || !slotA.playerId || !slotB.playerId) return
+
+  a.matchesPlayed++
+  b.matchesPlayed++
+  a.legsWon += m.legWins[slotA.playerId] ?? 0
+  a.legsLost += m.legWins[slotB.playerId] ?? 0
+  b.legsWon += m.legWins[slotB.playerId] ?? 0
+  b.legsLost += m.legWins[slotA.playerId] ?? 0
+  if (m.winnerId === slotA.playerId) a.matchesWon++
+  else if (m.winnerId === slotB.playerId) b.matchesWon++
+}
+
 /**
  * Every player's record across the league schedule so far, ranked by match wins, tiebroken by
  * leg differential (legs won minus legs lost). Only tallies already-complete matchups, so this
@@ -291,25 +309,34 @@ export function roundRobinLeaderboard(tournament: Tournament): RoundRobinStandin
     tournament.players.map((p) => [p.id, { player: p, matchesWon: 0, matchesPlayed: 0, legsWon: 0, legsLost: 0 }]),
   )
   for (const matchups of tournament.rounds) {
-    for (const m of matchups) {
-      if (m.status !== 'complete') continue
-      const [slotA, slotB] = m.players
-      const a = slotA.playerId ? byId.get(slotA.playerId) : undefined
-      const b = slotB.playerId ? byId.get(slotB.playerId) : undefined
-      if (!a || !b || !slotA.playerId || !slotB.playerId) continue
-      a.matchesPlayed++
-      b.matchesPlayed++
-      a.legsWon += m.legWins[slotA.playerId] ?? 0
-      a.legsLost += m.legWins[slotB.playerId] ?? 0
-      b.legsWon += m.legWins[slotB.playerId] ?? 0
-      b.legsLost += m.legWins[slotA.playerId] ?? 0
-      if (m.winnerId === slotA.playerId) a.matchesWon++
-      else if (m.winnerId === slotB.playerId) b.matchesWon++
-    }
+    for (const m of matchups) tallyMatchup(byId, m)
   }
   return [...byId.values()].sort(
     (x, y) => y.matchesWon - x.matchesWon || y.legsWon - y.legsLost - (x.legsWon - x.legsLost),
   )
+}
+
+/**
+ * Walks knockout rounds from the final backward, collecting each decided matchup's loser the
+ * first time they're seen - which is exactly reverse-elimination order (runner-up first, then
+ * the semi-finalists, etc), since a player who lost earlier keeps showing up as a loser in every
+ * later round they would have played had they won.
+ */
+function bracketRunnersUp(tournament: Tournament, playerById: Map<string, Player>, seen: Set<string>): Player[] {
+  const result: Player[] = []
+  for (let round = tournament.rounds.length - 1; round >= 0; round--) {
+    for (const matchup of tournament.rounds[round]) {
+      if (matchup.status !== 'complete' || !matchup.winnerId) continue
+      const loserId = matchup.players.find((slot) => slot.playerId && slot.playerId !== matchup.winnerId)?.playerId
+      if (!loserId || seen.has(loserId)) continue
+      const loser = playerById.get(loserId)
+      if (loser) {
+        result.push(loser)
+        seen.add(loserId)
+      }
+    }
+  }
+  return result
 }
 
 /** Champion first, then reverse-elimination order (runner-up, then semi-finalists, etc) for knockout;
@@ -320,8 +347,8 @@ export function standings(tournament: Tournament): Player[] {
   }
 
   const playerById = new Map(tournament.players.map((p) => [p.id, p]))
-  const result: Player[] = []
   const seen = new Set<string>()
+  const result: Player[] = []
 
   if (tournament.championId) {
     const champion = playerById.get(tournament.championId)
@@ -331,19 +358,5 @@ export function standings(tournament: Tournament): Player[] {
     }
   }
 
-  for (let round = tournament.rounds.length - 1; round >= 0; round--) {
-    for (const matchup of tournament.rounds[round]) {
-      if (matchup.status !== 'complete' || !matchup.winnerId) continue
-      const loserId = matchup.players.find((slot) => slot.playerId && slot.playerId !== matchup.winnerId)?.playerId
-      if (loserId && !seen.has(loserId)) {
-        const loser = playerById.get(loserId)
-        if (loser) {
-          result.push(loser)
-          seen.add(loserId)
-        }
-      }
-    }
-  }
-
-  return result
+  return [...result, ...bracketRunnersUp(tournament, playerById, seen)]
 }
