@@ -2,6 +2,22 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './ui/Button'
 import { inputClass } from './ui/Panel'
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0 1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
+    </svg>
+  )
+}
+
 /**
  * Caps a list's height and scrolls it, with a top/bottom shadow that fades in
  * only on the edge(s) still hiding content. Native scrollbars can't be relied
@@ -110,7 +126,7 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
       {onRename && (
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={(e) => {
             e.stopPropagation()
             setDraft(name)
@@ -118,20 +134,20 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
           }}
           aria-label={`Rename ${name}`}
         >
-          Rename
+          <PencilIcon />
         </Button>
       )}
       {onDelete && (
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label={`Delete ${name}`}
         >
-          Delete
+          <TrashIcon />
         </Button>
       )}
     </li>
