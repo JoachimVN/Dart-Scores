@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './ui/Button'
+import { inputClass } from './ui/Panel'
 
 /**
  * Caps a list's height and scrolls it, with a top/bottom shadow that fades in
@@ -46,10 +47,50 @@ interface RosterRowProps {
   readonly selected?: boolean
   readonly onMove: () => void
   readonly onDelete?: () => void
+  readonly onRename?: (name: string) => void
 }
 
 /** A name that moves the person to the other list when clicked. */
-export function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) {
+export function RosterRow({ name, selected, onMove, onDelete, onRename }: RosterRowProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(name)
+
+  // Keep the draft in sync if the underlying name changes while not editing (e.g. renamed elsewhere).
+  useEffect(() => {
+    if (!editing) setDraft(name)
+  }, [name, editing])
+
+  function commitRename() {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== name) onRename?.(trimmed)
+    else setDraft(name)
+  }
+
+  if (editing) {
+    return (
+      <li className="flex items-center gap-2 rounded-(--radius-md) border border-accent/40 bg-card px-3 py-2.5">
+        <input
+          autoFocus
+          className={inputClass + ' h-auto min-w-0 flex-1 py-0'}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              commitRename()
+            }
+            if (e.key === 'Escape') {
+              setDraft(name)
+              setEditing(false)
+            }
+          }}
+        />
+      </li>
+    )
+  }
+
   return (
     <li
       className={
@@ -66,6 +107,20 @@ export function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) 
       >
         {name}
       </button>
+      {onRename && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            setDraft(name)
+            setEditing(true)
+          }}
+          aria-label={`Rename ${name}`}
+        >
+          Rename
+        </Button>
+      )}
       {onDelete && (
         <Button
           variant="ghost"

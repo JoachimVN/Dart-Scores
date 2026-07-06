@@ -17,8 +17,17 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', initialX01Config }: SetupScreenProps) {
-  const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
-    useRosterSelection(initialPlayers)
+  const {
+    availableUsers,
+    players,
+    newUserName,
+    setNewUserName,
+    addUser,
+    deleteUser,
+    renameUser,
+    addToGame,
+    removeFromGame,
+  } = useRosterSelection(initialPlayers)
 
   const [mode, setMode] = useState<NewGameParams['mode']>(initialMode)
   const [startingScore, setStartingScore] = useState<301 | 501>((initialX01Config?.startingScore as 301 | 501) ?? 501)
@@ -44,6 +53,7 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
               name={user.name}
               onMove={() => addToGame(user.id)}
               onDelete={() => deleteUser(user.id, user.name)}
+              onRename={(name) => renameUser(user.id, name)}
             />
           ))}
         </ScrollShadow>
@@ -71,7 +81,13 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
         <ScrollShadow>
           {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
           {players.map((player) => (
-            <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
+            <RosterRow
+              key={player.id}
+              name={player.name}
+              selected
+              onMove={() => removeFromGame(player.id)}
+              onRename={(name) => renameUser(player.id, name)}
+            />
           ))}
         </ScrollShadow>
       </Panel>

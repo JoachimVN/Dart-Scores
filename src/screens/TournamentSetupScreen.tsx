@@ -16,8 +16,17 @@ interface TournamentSetupScreenProps {
 }
 
 export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
-  const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
-    useRosterSelection()
+  const {
+    availableUsers,
+    players,
+    newUserName,
+    setNewUserName,
+    addUser,
+    deleteUser,
+    renameUser,
+    addToGame,
+    removeFromGame,
+  } = useRosterSelection()
 
   const [mode, setMode] = useState<GameMode>('x01')
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
@@ -46,6 +55,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
               name={user.name}
               onMove={() => addToGame(user.id)}
               onDelete={() => deleteUser(user.id, user.name)}
+              onRename={(name) => renameUser(user.id, name)}
             />
           ))}
         </ScrollShadow>
@@ -70,7 +80,13 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
         <ScrollShadow>
           {players.length === 0 && <li className="text-ink-muted">Click a user to add them here. Need 2+.</li>}
           {players.map((player) => (
-            <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
+            <RosterRow
+              key={player.id}
+              name={player.name}
+              selected
+              onMove={() => removeFromGame(player.id)}
+              onRename={(name) => renameUser(player.id, name)}
+            />
           ))}
         </ScrollShadow>
       </Panel>
