@@ -125,7 +125,7 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
       </button>
       {onRename && (
         <Button
-          variant="ghost"
+          variant="ghost-quiet"
           size="icon"
           onClick={(e) => {
             e.stopPropagation()
@@ -139,7 +139,7 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
       )}
       {onDelete && (
         <Button
-          variant="ghost"
+          variant="ghost-danger"
           size="icon"
           onClick={(e) => {
             e.stopPropagation()
