@@ -1,5 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './ui/Button'
+import { inputClass } from './ui/Panel'
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0 1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
+    </svg>
+  )
+}
 
 /**
  * Caps a list's height and scrolls it, with a top/bottom shadow that fades in
@@ -46,10 +63,50 @@ interface RosterRowProps {
   readonly selected?: boolean
   readonly onMove: () => void
   readonly onDelete?: () => void
+  readonly onRename?: (name: string) => void
 }
 
 /** A name that moves the person to the other list when clicked. */
-export function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) {
+export function RosterRow({ name, selected, onMove, onDelete, onRename }: RosterRowProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(name)
+
+  // Keep the draft in sync if the underlying name changes while not editing (e.g. renamed elsewhere).
+  useEffect(() => {
+    if (!editing) setDraft(name)
+  }, [name, editing])
+
+  function commitRename() {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== name) onRename?.(trimmed)
+    else setDraft(name)
+  }
+
+  if (editing) {
+    return (
+      <li className="flex items-center gap-2 rounded-(--radius-md) border border-accent/40 bg-card px-3 py-2.5">
+        <input
+          autoFocus
+          className={inputClass + ' h-auto min-w-0 flex-1 py-0'}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              commitRename()
+            }
+            if (e.key === 'Escape') {
+              setDraft(name)
+              setEditing(false)
+            }
+          }}
+        />
+      </li>
+    )
+  }
+
   return (
     <li
       className={
@@ -66,17 +123,31 @@ export function RosterRow({ name, selected, onMove, onDelete }: RosterRowProps) 
       >
         {name}
       </button>
+      {onRename && (
+        <Button
+          variant="ghost-quiet"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation()
+            setDraft(name)
+            setEditing(true)
+          }}
+          aria-label={`Rename ${name}`}
+        >
+          <PencilIcon />
+        </Button>
+      )}
       {onDelete && (
         <Button
-          variant="ghost"
-          size="sm"
+          variant="ghost-danger"
+          size="icon"
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label={`Delete ${name}`}
         >
-          Delete
+          <TrashIcon />
         </Button>
       )}
     </li>

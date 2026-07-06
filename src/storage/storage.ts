@@ -40,3 +40,7 @@ export function saveRoot(root: PersistedRoot): void {
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope))
 }
+
+export function resetAllData(): void {
+  localStorage.removeItem(STORAGE_KEY)
+}

@@ -32,6 +32,18 @@ export function useRosterSelection(initialPlayers?: Player[]) {
     setSelectedIds((prev) => prev.filter((x) => x !== id))
   }
 
+  function renameUser(id: string, name: string) {
+    if (allUsers.some((u) => u.id !== id && u.name.toLowerCase() === name.toLowerCase())) {
+      globalThis.alert(`A user named "${name}" already exists.`)
+      return
+    }
+    const existing = allUsers.find((u) => u.id === id)
+    if (!existing) return
+    const updated: Player = { ...existing, name }
+    upsertPlayer(updated)
+    setAllUsers((prev) => prev.map((u) => (u.id === id ? updated : u)))
+  }
+
   function addToGame(id: string) {
     setSelectedIds((prev) => [...prev, id])
   }
@@ -47,6 +59,7 @@ export function useRosterSelection(initialPlayers?: Player[]) {
     setNewUserName,
     addUser,
     deleteUser,
+    renameUser,
     addToGame,
     removeFromGame,
   }

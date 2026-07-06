@@ -79,22 +79,17 @@ function advanceWinner(tournament: Tournament, matchup: Matchup): Tournament {
   return replaceMatchup(tournament, nextRound, targetIndex, { ...target, players })
 }
 
-/** Builds a fresh single-elimination bracket, auto-resolving any byes and advancing their winners. */
-export function createTournament(players: Player[], config: TournamentConfig): Tournament {
-  if (players.length < 3) {
-    throw new Error('A tournament needs at least 3 players.')
-  }
-
+/** Builds a fresh single-elimination bracket's rounds, auto-resolving byes (but not yet advancing their winners). */
+function buildKnockoutRounds(players: Player[], legsToWin: number): Matchup[][] {
   const bracketSize = nextPowerOfTwo(players.length)
   const order = seedOrder(bracketSize)
   const roundCount = Math.log2(bracketSize)
-  const now = Date.now()
 
   const round0: Matchup[] = []
   for (let i = 0; i < bracketSize / 2; i++) {
     const slotA = toSlot(players, order[i * 2])
     const slotB = toSlot(players, order[i * 2 + 1])
-    const matchup = emptyMatchup(0, i, config.legsToWin)
+    const matchup = emptyMatchup(0, i, legsToWin)
     matchup.players = [slotA, slotB]
     if (slotA.bye || slotB.bye) {
       matchup.status = 'complete'
@@ -106,8 +101,73 @@ export function createTournament(players: Player[], config: TournamentConfig): T
   const rounds: Matchup[][] = [round0]
   for (let round = 1; round < roundCount; round++) {
     const count = bracketSize / 2 ** (round + 1)
-    rounds.push(Array.from({ length: count }, (_, i) => emptyMatchup(round, i, config.legsToWin)))
+    rounds.push(Array.from({ length: count }, (_, i) => emptyMatchup(round, i, legsToWin)))
   }
+
+  return rounds
+}
+
+/**
+ * Standard circle-method round-robin scheduling: fixes one id, rotates the rest each round.
+ * For an odd player count a placeholder `null` bye is added so pairing math stays even - the
+ * player paired against it simply sits out that round (no matchup is created for it, unlike
+ * knockout's bye-slot-that-auto-wins convention).
+ */
+function circleMethodRounds(playerIds: string[]): string[][][] {
+  const ids: (string | null)[] = [...playerIds]
+  if (ids.length % 2 !== 0) ids.push(null)
+  const n = ids.length
+  const fixed = ids[0]
+  let rotating = ids.slice(1)
+  const rounds: string[][][] = []
+  for (let r = 0; r < n - 1; r++) {
+    const roundIds = [fixed, ...rotating]
+    const pairs: string[][] = []
+    for (let i = 0; i < n / 2; i++) {
+      const a = roundIds[i]
+      const b = roundIds[n - 1 - i]
+      if (a !== null && b !== null) pairs.push([a, b])
+    }
+    rounds.push(pairs)
+    rotating = [rotating.at(-1) ?? null, ...rotating.slice(0, -1)]
+  }
+  return rounds
+}
+
+/**
+ * Builds the full round-robin schedule: `matchesPerPair` full cycles of the circle method,
+ * each cycle producing fresh, distinct Matchup ids so match-win tallies count each meeting
+ * separately (needed for a double round-robin "league").
+ */
+function buildRoundRobinRounds(players: Player[], legsToWin: number, matchesPerPair: 1 | 2): Matchup[][] {
+  const pairingsPerCycle = circleMethodRounds(players.map((p) => p.id))
+  const rounds: Matchup[][] = []
+  for (let cycle = 0; cycle < matchesPerPair; cycle++) {
+    for (const pairs of pairingsPerCycle) {
+      const roundIndex = rounds.length
+      rounds.push(
+        pairs.map(([a, b], slotIndex) => {
+          const matchup = emptyMatchup(roundIndex, slotIndex, legsToWin)
+          matchup.players = [{ playerId: a }, { playerId: b }]
+          return matchup
+        }),
+      )
+    }
+  }
+  return rounds
+}
+
+/** Builds a fresh tournament, dispatching bracket vs. league scheduling by `config.format`. */
+export function createTournament(players: Player[], config: TournamentConfig): Tournament {
+  if (players.length < 2) {
+    throw new Error('A tournament needs at least 2 players.')
+  }
+
+  const now = Date.now()
+  const rounds =
+    config.format === 'round_robin'
+      ? buildRoundRobinRounds(players, config.legsToWin, config.matchesPerPair)
+      : buildKnockoutRounds(players, config.legsToWin)
 
   let tournament: Tournament = {
     id: generateId(),
@@ -120,9 +180,11 @@ export function createTournament(players: Player[], config: TournamentConfig): T
     updatedAt: now,
   }
 
-  for (const matchup of round0) {
-    if (matchup.status === 'complete' && matchup.winnerId) {
-      tournament = advanceWinner(tournament, matchup)
+  if (config.format === 'knockout') {
+    for (const matchup of rounds[0]) {
+      if (matchup.status === 'complete' && matchup.winnerId) {
+        tournament = advanceWinner(tournament, matchup)
+      }
     }
   }
 
@@ -153,8 +215,19 @@ export function recordLegResult(
   }
 
   let updated = replaceMatchup(tournament, location.round, location.index, updatedMatchup)
-  if (decided) updated = advanceWinner(updated, updatedMatchup)
+  if (decided) {
+    updated =
+      tournament.config.format === 'round_robin' ? maybeCompleteRoundRobin(updated) : advanceWinner(updated, updatedMatchup)
+  }
   return updated
+}
+
+/** Crowns a champion once every matchup in the league schedule is complete, from the top of the leaderboard. */
+function maybeCompleteRoundRobin(tournament: Tournament): Tournament {
+  const allDone = tournament.rounds.every((matchups) => matchups.every((m) => m.status === 'complete'))
+  if (!allDone) return tournament
+  const championId = roundRobinLeaderboard(tournament)[0]?.player.id ?? null
+  return { ...tournament, status: 'complete', championId, updatedAt: Date.now() }
 }
 
 /** The one matchup that's currently playable: not yet decided, with both slots filled. Rounds/slots are walked in order, so v1 only ever surfaces one matchup at a time even if a round has several independently-playable ones. */
@@ -200,11 +273,82 @@ export function findMatchupByLegGameId(tournament: Tournament, gameId: string): 
   return null
 }
 
-/** Champion first, then reverse-elimination order (runner-up, then semi-finalists, etc). */
-export function standings(tournament: Tournament): Player[] {
-  const playerById = new Map(tournament.players.map((p) => [p.id, p]))
+export interface RoundRobinStanding {
+  player: Player
+  matchesWon: number
+  matchesPlayed: number
+  legsWon: number
+  legsLost: number
+}
+
+/** Folds one decided matchup's result into both players' running standings; no-op if undecided. */
+function tallyMatchup(byId: Map<string, RoundRobinStanding>, m: Matchup): void {
+  if (m.status !== 'complete') return
+  const [slotA, slotB] = m.players
+  const a = slotA.playerId ? byId.get(slotA.playerId) : undefined
+  const b = slotB.playerId ? byId.get(slotB.playerId) : undefined
+  if (!a || !b || !slotA.playerId || !slotB.playerId) return
+
+  a.matchesPlayed++
+  b.matchesPlayed++
+  a.legsWon += m.legWins[slotA.playerId] ?? 0
+  a.legsLost += m.legWins[slotB.playerId] ?? 0
+  b.legsWon += m.legWins[slotB.playerId] ?? 0
+  b.legsLost += m.legWins[slotA.playerId] ?? 0
+  if (m.winnerId === slotA.playerId) a.matchesWon++
+  else if (m.winnerId === slotB.playerId) b.matchesWon++
+}
+
+/**
+ * Every player's record across the league schedule so far, ranked by match wins, tiebroken by
+ * leg differential (legs won minus legs lost). Only tallies already-complete matchups, so this
+ * doubles as a live in-progress leaderboard, not just a final one.
+ */
+export function roundRobinLeaderboard(tournament: Tournament): RoundRobinStanding[] {
+  const byId = new Map(
+    tournament.players.map((p) => [p.id, { player: p, matchesWon: 0, matchesPlayed: 0, legsWon: 0, legsLost: 0 }]),
+  )
+  for (const matchups of tournament.rounds) {
+    for (const m of matchups) tallyMatchup(byId, m)
+  }
+  return [...byId.values()].sort(
+    (x, y) => y.matchesWon - x.matchesWon || y.legsWon - y.legsLost - (x.legsWon - x.legsLost),
+  )
+}
+
+/**
+ * Walks knockout rounds from the final backward, collecting each decided matchup's loser the
+ * first time they're seen - which is exactly reverse-elimination order (runner-up first, then
+ * the semi-finalists, etc), since a player who lost earlier keeps showing up as a loser in every
+ * later round they would have played had they won.
+ */
+function bracketRunnersUp(tournament: Tournament, playerById: Map<string, Player>, seen: Set<string>): Player[] {
   const result: Player[] = []
+  for (let round = tournament.rounds.length - 1; round >= 0; round--) {
+    for (const matchup of tournament.rounds[round]) {
+      if (matchup.status !== 'complete' || !matchup.winnerId) continue
+      const loserId = matchup.players.find((slot) => slot.playerId && slot.playerId !== matchup.winnerId)?.playerId
+      if (!loserId || seen.has(loserId)) continue
+      const loser = playerById.get(loserId)
+      if (loser) {
+        result.push(loser)
+        seen.add(loserId)
+      }
+    }
+  }
+  return result
+}
+
+/** Champion first, then reverse-elimination order (runner-up, then semi-finalists, etc) for knockout;
+ *  league-leaderboard order for round_robin. */
+export function standings(tournament: Tournament): Player[] {
+  if (tournament.config.format === 'round_robin') {
+    return roundRobinLeaderboard(tournament).map((s) => s.player)
+  }
+
+  const playerById = new Map(tournament.players.map((p) => [p.id, p]))
   const seen = new Set<string>()
+  const result: Player[] = []
 
   if (tournament.championId) {
     const champion = playerById.get(tournament.championId)
@@ -214,19 +358,5 @@ export function standings(tournament: Tournament): Player[] {
     }
   }
 
-  for (let round = tournament.rounds.length - 1; round >= 0; round--) {
-    for (const matchup of tournament.rounds[round]) {
-      if (matchup.status !== 'complete' || !matchup.winnerId) continue
-      const loserId = matchup.players.find((slot) => slot.playerId && slot.playerId !== matchup.winnerId)?.playerId
-      if (loserId && !seen.has(loserId)) {
-        const loser = playerById.get(loserId)
-        if (loser) {
-          result.push(loser)
-          seen.add(loserId)
-        }
-      }
-    }
-  }
-
-  return result
+  return [...result, ...bracketRunnersUp(tournament, playerById, seen)]
 }

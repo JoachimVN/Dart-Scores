@@ -1,5 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import type { NewGameParams, Player } from '../game/types'
+import type { X01Config } from '../game/x01/x01Types'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { GameModeToggle } from '../components/GameModeToggle'
@@ -10,15 +11,27 @@ interface SetupScreenProps {
   readonly onStart: (params: NewGameParams) => void
   /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
   readonly initialPlayers?: Player[]
+  /** Pre-selects the last-used mode/config (e.g. after "New game"), instead of always resetting to X01/501/double-out. */
+  readonly initialMode?: NewGameParams['mode']
+  readonly initialX01Config?: X01Config
 }
 
-export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
-  const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
-    useRosterSelection(initialPlayers)
+export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', initialX01Config }: SetupScreenProps) {
+  const {
+    availableUsers,
+    players,
+    newUserName,
+    setNewUserName,
+    addUser,
+    deleteUser,
+    renameUser,
+    addToGame,
+    removeFromGame,
+  } = useRosterSelection(initialPlayers)
 
-  const [mode, setMode] = useState<NewGameParams['mode']>('x01')
-  const [startingScore, setStartingScore] = useState<301 | 501>(501)
-  const [doubleOut, setDoubleOut] = useState(true)
+  const [mode, setMode] = useState<NewGameParams['mode']>(initialMode)
+  const [startingScore, setStartingScore] = useState<301 | 501>((initialX01Config?.startingScore as 301 | 501) ?? 501)
+  const [doubleOut, setDoubleOut] = useState(initialX01Config?.doubleOut ?? true)
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
@@ -40,6 +53,7 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
               name={user.name}
               onMove={() => addToGame(user.id)}
               onDelete={() => deleteUser(user.id, user.name)}
+              onRename={(name) => renameUser(user.id, name)}
             />
           ))}
         </ScrollShadow>
@@ -67,7 +81,13 @@ export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
         <ScrollShadow>
           {players.length === 0 && <li className="text-ink-muted">Click a user to add them here.</li>}
           {players.map((player) => (
-            <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
+            <RosterRow
+              key={player.id}
+              name={player.name}
+              selected
+              onMove={() => removeFromGame(player.id)}
+              onRename={(name) => renameUser(player.id, name)}
+            />
           ))}
         </ScrollShadow>
       </Panel>

@@ -11,8 +11,13 @@ import {
 import type { Player } from '../game/types'
 import type { TournamentConfig } from './tournamentTypes'
 
-const config: TournamentConfig = { mode: 'x01', x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 }
-const cricketConfig: TournamentConfig = { mode: 'cricket', legsToWin: 2 }
+const config: TournamentConfig = {
+  format: 'knockout',
+  mode: 'x01',
+  x01: { startingScore: 501, doubleOut: true },
+  legsToWin: 2,
+}
+const cricketConfig: TournamentConfig = { format: 'knockout', mode: 'cricket', legsToWin: 2 }
 
 function playersOf(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }))

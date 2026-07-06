@@ -10,7 +10,7 @@ interface PanelProps extends HTMLAttributes<HTMLElement> {
  * Standard card surface. Children render flat inside the section (no extra
  * wrappers), so lists that measure/animate their own rows (FLIP) keep working.
  */
-export function Panel({ title, className, children, ...rest }: PanelProps) {
+export function Panel({ title, className, children, ...rest }: Readonly<PanelProps>) {
   const classes = ['rounded-(--radius-lg) border border-line bg-card p-4 shadow-sm', className]
     .filter(Boolean)
     .join(' ')

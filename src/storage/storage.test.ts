@@ -27,7 +27,7 @@ describe('saveRoot / loadRoot round-trip', () => {
     const root = {
       players: [{ id: 'p1', name: 'Alice' }],
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'dark' as const },
+      settings: { useDartNotation: false, theme: 'dark' as const, showCheckoutSuggestions: false },
       history: [],
       activeTournament: null,
     }
@@ -53,7 +53,7 @@ describe('migrations', () => {
     expect(loadRoot()).toEqual({
       players: v2Data.players,
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'system' },
+      settings: { useDartNotation: false, theme: 'system', showCheckoutSuggestions: true },
       history: [],
       activeTournament: null,
     })
@@ -142,7 +142,10 @@ describe('migrations', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
     expect(loadRoot()).toEqual({
       ...v6Data,
-      activeTournament: { ...v6Data.activeTournament, config: { mode: 'x01', ...v6Data.activeTournament.config } },
+      activeTournament: {
+        ...v6Data.activeTournament,
+        config: { format: 'knockout', mode: 'x01', ...v6Data.activeTournament.config },
+      },
     })
   })
 
@@ -150,5 +153,50 @@ describe('migrations', () => {
     const v6Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
     expect(loadRoot()).toEqual(v6Data)
+  })
+
+  it('migrates a v7 envelope (no showCheckoutSuggestions) defaulting it to true, preserving existing settings', () => {
+    const v7Data = {
+      players: [],
+      activeGame: null,
+      settings: { useDartNotation: false, theme: 'dark' },
+      history: [],
+      activeTournament: null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 7, data: v7Data }))
+    expect(loadRoot()).toEqual({
+      ...v7Data,
+      settings: { ...v7Data.settings, showCheckoutSuggestions: true },
+    })
+  })
+
+  it('migrates a v8 envelope (tournament config with no format) defaulting it to knockout', () => {
+    const v8Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+      activeTournament: {
+        id: 't1',
+        status: 'in_progress',
+        config: { mode: 'x01', x01: { startingScore: 501, doubleOut: true }, legsToWin: 2 },
+        players: [],
+        rounds: [],
+        championId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 8, data: v8Data }))
+    expect(loadRoot()).toEqual({
+      ...v8Data,
+      activeTournament: { ...v8Data.activeTournament, config: { format: 'knockout', ...v8Data.activeTournament.config } },
+    })
+  })
+
+  it('leaves a v8 envelope with no active tournament unchanged', () => {
+    const v8Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 8, data: v8Data }))
+    expect(loadRoot()).toEqual(v8Data)
   })
 })

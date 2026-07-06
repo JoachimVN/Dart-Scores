@@ -4,6 +4,14 @@ A client-only scorer for X01 dart games (301/501), built with React 19, TypeScri
 
 Live at [joavn.dev/dart-scores](https://joavn.dev/dart-scores).
 
+<p align="center">
+  <img src="https://github.com/JoachimVN/Dart-Scores/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <img src="https://github.com/JoachimVN/Dart-Scores/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" />
+  <a href="https://sonarcloud.io/summary/new_code?id=JoachimVN_Dart-Scores">
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=JoachimVN_Dart-Scores&metric=alert_status" alt="Quality Gate Status" />
+  </a>
+</p>
+
 ## Features
 
 - X01 scoring (301 or 501, single or double out) and cricket for any number of players
