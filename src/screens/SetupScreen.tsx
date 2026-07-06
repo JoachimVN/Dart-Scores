@@ -1,5 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import type { NewGameParams, Player } from '../game/types'
+import type { X01Config } from '../game/x01/x01Types'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { GameModeToggle } from '../components/GameModeToggle'
@@ -10,15 +11,18 @@ interface SetupScreenProps {
   readonly onStart: (params: NewGameParams) => void
   /** Pre-selects these into the Players list (e.g. a rematch after "New game"), instead of starting empty. */
   readonly initialPlayers?: Player[]
+  /** Pre-selects the last-used mode/config (e.g. after "New game"), instead of always resetting to X01/501/double-out. */
+  readonly initialMode?: NewGameParams['mode']
+  readonly initialX01Config?: X01Config
 }
 
-export function SetupScreen({ onStart, initialPlayers }: SetupScreenProps) {
+export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', initialX01Config }: SetupScreenProps) {
   const { availableUsers, players, newUserName, setNewUserName, addUser, deleteUser, addToGame, removeFromGame } =
     useRosterSelection(initialPlayers)
 
-  const [mode, setMode] = useState<NewGameParams['mode']>('x01')
-  const [startingScore, setStartingScore] = useState<301 | 501>(501)
-  const [doubleOut, setDoubleOut] = useState(true)
+  const [mode, setMode] = useState<NewGameParams['mode']>(initialMode)
+  const [startingScore, setStartingScore] = useState<301 | 501>((initialX01Config?.startingScore as 301 | 501) ?? 501)
+  const [doubleOut, setDoubleOut] = useState(initialX01Config?.doubleOut ?? true)
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()

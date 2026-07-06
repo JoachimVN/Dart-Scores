@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { TopBar } from './components/TopBar'
 import { UpdateToast } from './components/UpdateToast'
-import type { Player } from './game/types'
+import type { GameMode, Player } from './game/types'
+import type { X01Config } from './game/x01/x01Types'
 import { useGame } from './hooks/useGame'
 import { useTheme } from './hooks/useTheme'
 import { useTournament } from './hooks/useTournament'
@@ -14,6 +15,7 @@ import { TournamentLegCompleteScreen } from './screens/TournamentLegCompleteScre
 import { TournamentSetupScreen } from './screens/TournamentSetupScreen'
 import { getSettings, updateSettings } from './settings/settingsRepository'
 import type { Settings } from './storage/schema'
+import { resetAllData } from './storage/storage'
 import { findMatchupByLegGameId } from './tournament/tournamentEngine'
 
 // Lazy-loaded so recharts (only needed here) doesn't bloat the main bundle.
@@ -25,14 +27,22 @@ function App() {
   const [settings, setSettings] = useState<Settings>(() => getSettings())
   const [view, setView] = useState<'main' | 'stats'>('main')
   const [lastPlayers, setLastPlayers] = useState<Player[]>([])
+  const [lastMode, setLastMode] = useState<GameMode>('x01')
+  const [lastX01Config, setLastX01Config] = useState<X01Config>({ startingScore: 501, doubleOut: true })
   const [setupTab, setSetupTab] = useState<'casual' | 'tournament'>('casual')
 
-  // Captures who just played before clearing the game, so Setup can offer
-  // them as a ready-made Players list for a quick rematch instead of making
-  // you re-pick everyone from Users again. Only meaningful for casual play -
-  // a tournament leg's players are already recorded in the bracket itself.
+  // Captures who just played (and the mode/config they played with) before
+  // clearing the game, so Setup can pre-fill a quick rematch instead of
+  // resetting to X01/501/double-out and making you re-pick everyone from
+  // Users again. Only meaningful for casual play - a tournament leg's players
+  // and config are already recorded in the bracket itself. Session-only (not
+  // persisted), same as lastPlayers.
   function handleNewGame() {
-    if (game && !tournament) setLastPlayers(game.players)
+    if (game && !tournament) {
+      setLastPlayers(game.players)
+      setLastMode(game.mode)
+      if (game.mode === 'x01') setLastX01Config(game.x01.config)
+    }
     newGame()
   }
 
@@ -67,12 +77,21 @@ function App() {
     updateSettings(patch)
   }
 
+  // Confirmation already happened in TopBar - just wipe storage and reload so
+  // every piece of in-memory state (game, tournament, roster, settings) reverts
+  // to its default in one shot instead of resetting each useState by hand.
+  function handleResetAllData() {
+    resetAllData()
+    globalThis.location.reload()
+  }
+
   const topBar = (modeLabel: string) => (
     <TopBar
       modeLabel={modeLabel}
       settings={settings}
       onSettingsChange={handleSettingsChange}
       onOpenStats={() => setView('stats')}
+      onResetAllData={handleResetAllData}
     />
   )
 
@@ -106,6 +125,7 @@ function App() {
           onNewGame={handleNewGame}
           onRestart={handleRematch}
           useDartNotation={settings.useDartNotation}
+          showCheckoutSuggestions={settings.showCheckoutSuggestions}
         />
       )
     } else if (tournament.status === 'complete') {
@@ -149,7 +169,12 @@ function App() {
           ))}
         </div>
         {setupTab === 'casual' ? (
-          <SetupScreen onStart={startGame} initialPlayers={lastPlayers} />
+          <SetupScreen
+            onStart={startGame}
+            initialPlayers={lastPlayers}
+            initialMode={lastMode}
+            initialX01Config={lastX01Config}
+          />
         ) : (
           <TournamentSetupScreen onStart={startTournament} />
         )}
@@ -178,6 +203,7 @@ function App() {
         onNewGame={handleNewGame}
         onRestart={handleRematch}
         useDartNotation={settings.useDartNotation}
+        showCheckoutSuggestions={settings.showCheckoutSuggestions}
       />
     )
   }

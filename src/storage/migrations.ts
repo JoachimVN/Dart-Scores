@@ -86,4 +86,12 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 7,
+    to: 8,
+    migrate: (data) => {
+      const root = data as { settings?: Partial<ReturnType<typeof defaultSettings>> }
+      return { ...root, settings: { ...defaultSettings(), ...root.settings } }
+    },
+  },
 ]

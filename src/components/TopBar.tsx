@@ -10,12 +10,19 @@ interface TopBarProps {
   settings: Settings
   onSettingsChange: (patch: Partial<Settings>) => void
   onOpenStats: () => void
+  onResetAllData: () => void
 }
 
-export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: TopBarProps) {
+export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onResetAllData }: TopBarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const { canInstall, promptInstall } = useInstallPrompt()
+
+  function handleResetAllData() {
+    if (globalThis.confirm('Reset all data? This deletes every player, game, and stat. This cannot be undone.')) {
+      onResetAllData()
+    }
+  }
 
   useEffect(() => {
     if (!settingsOpen) return
@@ -74,6 +81,22 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats }: T
               />
               <span>Show dart notation (T20) instead of points (60)</span>
             </label>
+
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-(--accent)"
+                checked={settings.showCheckoutSuggestions}
+                onChange={(e) => onSettingsChange({ showCheckoutSuggestions: e.target.checked })}
+              />
+              <span>Show checkout suggestions</span>
+            </label>
+
+            <div className="border-t border-line pt-3">
+              <Button variant="danger" size="sm" className="w-full" onClick={handleResetAllData}>
+                Reset all data
+              </Button>
+            </div>
           </div>
         )}
       </div>

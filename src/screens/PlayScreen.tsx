@@ -9,6 +9,7 @@ import { TurnPanel } from '../components/TurnPanel'
 import { lastCompletedTurn as lastCompletedCricketTurn, liveMarksAndPoints } from '../game/cricket/cricketEngine'
 import { lastCompletedTurn as lastCompletedX01Turn, liveRemaining } from '../game/x01/x01Engine'
 import type { GameState, Throw } from '../game/types'
+import { useWakeLock } from '../hooks/useWakeLock'
 
 /** What PlayScreen needs to render, independent of which mode's engine produced it. */
 interface PlayViewModel {
@@ -18,10 +19,13 @@ interface PlayViewModel {
   bustedPlayerId: string | null
   /** The "big number" shown per player in the sidebar - remaining score for X01, points for Cricket. */
   valueFor: (playerId: string) => number
-  rightPanel: ReactNode
+  rightPanel: ReactNode | null
 }
 
-function buildX01ViewModel(game: Extract<GameState, { mode: 'x01' }>): PlayViewModel {
+function buildX01ViewModel(
+  game: Extract<GameState, { mode: 'x01' }>,
+  showCheckoutSuggestions: boolean,
+): PlayViewModel {
   const { x01 } = game
   const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
   const isBetweenTurns = x01.currentTurnThrows.length === 0
@@ -36,13 +40,13 @@ function buildX01ViewModel(game: Extract<GameState, { mode: 'x01' }>): PlayViewM
       const playerState = x01.playerStates.find((ps) => ps.playerId === playerId)!
       return playerId === engineCurrentPlayerId && !isBetweenTurns ? liveRemaining(x01) : playerState.remaining
     },
-    rightPanel: (
+    rightPanel: showCheckoutSuggestions ? (
       <CheckoutCalculator
         remaining={liveRemaining(x01)}
         dartsAvailable={3 - x01.currentTurnThrows.length}
         doubleOut={x01.config.doubleOut}
       />
-    ),
+    ) : null,
   }
 }
 
@@ -82,6 +86,7 @@ interface PlayScreenProps {
   onNewGame: () => void
   onRestart: () => void
   useDartNotation: boolean
+  showCheckoutSuggestions: boolean
 }
 
 // The score list lives in a sidebar to the left of the board (not overlaid
@@ -126,8 +131,11 @@ export function PlayScreen({
   onNewGame,
   onRestart,
   useDartNotation,
+  showCheckoutSuggestions,
 }: PlayScreenProps) {
-  const viewModel = game.mode === 'x01' ? buildX01ViewModel(game) : buildCricketViewModel(game)
+  useWakeLock()
+  const viewModel =
+    game.mode === 'x01' ? buildX01ViewModel(game, showCheckoutSuggestions) : buildCricketViewModel(game)
   const { engineCurrentPlayerId, currentTurnThrows, lastTurn, bustedPlayerId, valueFor, rightPanel } = viewModel
   const isBetweenTurns = currentTurnThrows.length === 0
   const canUndo = currentTurnThrows.length > 0 || !!lastTurn
@@ -306,7 +314,7 @@ export function PlayScreen({
           />
         </div>
         {boardBox}
-        <div className="w-full max-w-md">{rightPanel}</div>
+        {rightPanel && <div className="w-full max-w-md">{rightPanel}</div>}
       </div>
     )
   }
@@ -335,9 +343,11 @@ export function PlayScreen({
 
       {boardBox}
 
-      <div className="justify-self-end" style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset }}>
-        {rightPanel}
-      </div>
+      {rightPanel && (
+        <div className="justify-self-end" style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset }}>
+          {rightPanel}
+        </div>
+      )}
     </div>
   )
 }

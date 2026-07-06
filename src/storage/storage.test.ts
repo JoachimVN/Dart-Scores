@@ -27,7 +27,7 @@ describe('saveRoot / loadRoot round-trip', () => {
     const root = {
       players: [{ id: 'p1', name: 'Alice' }],
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'dark' as const },
+      settings: { useDartNotation: false, theme: 'dark' as const, showCheckoutSuggestions: false },
       history: [],
       activeTournament: null,
     }
@@ -53,7 +53,7 @@ describe('migrations', () => {
     expect(loadRoot()).toEqual({
       players: v2Data.players,
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'system' },
+      settings: { useDartNotation: false, theme: 'system', showCheckoutSuggestions: true },
       history: [],
       activeTournament: null,
     })
@@ -150,5 +150,20 @@ describe('migrations', () => {
     const v6Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 6, data: v6Data }))
     expect(loadRoot()).toEqual(v6Data)
+  })
+
+  it('migrates a v7 envelope (no showCheckoutSuggestions) defaulting it to true, preserving existing settings', () => {
+    const v7Data = {
+      players: [],
+      activeGame: null,
+      settings: { useDartNotation: false, theme: 'dark' },
+      history: [],
+      activeTournament: null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 7, data: v7Data }))
+    expect(loadRoot()).toEqual({
+      ...v7Data,
+      settings: { ...v7Data.settings, showCheckoutSuggestions: true },
+    })
   })
 })
