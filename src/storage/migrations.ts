@@ -94,4 +94,22 @@ export const migrations: Migration[] = [
       return { ...root, settings: { ...defaultSettings(), ...root.settings } }
     },
   },
+  {
+    from: 8,
+    to: 9,
+    migrate: (data) => {
+      // The league (round-robin) format's addition means TournamentConfig
+      // needs an explicit format discriminant - existing tournaments predate
+      // it and were always knockout, with no matchesPerPair concept.
+      const root = data as { activeTournament?: { config?: Record<string, unknown> } | null }
+      if (!root.activeTournament) return root
+      return {
+        ...root,
+        activeTournament: {
+          ...root.activeTournament,
+          config: { format: 'knockout', ...root.activeTournament.config },
+        },
+      }
+    },
+  },
 ]

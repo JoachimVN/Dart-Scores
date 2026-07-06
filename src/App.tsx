@@ -12,6 +12,7 @@ import { SetupScreen } from './screens/SetupScreen'
 import { TournamentBracketScreen } from './screens/TournamentBracketScreen'
 import { TournamentChampionScreen } from './screens/TournamentChampionScreen'
 import { TournamentLegCompleteScreen } from './screens/TournamentLegCompleteScreen'
+import { TournamentRoundRobinScreen } from './screens/TournamentRoundRobinScreen'
 import { TournamentSetupScreen } from './screens/TournamentSetupScreen'
 import { getSettings, updateSettings } from './settings/settingsRepository'
 import type { Settings } from './storage/schema'
@@ -139,12 +140,21 @@ function App() {
       mainContent = (
         <>
           {topBar('Tournament')}
-          <TournamentBracketScreen
-            tournament={tournament}
-            matchup={matchup}
-            onPlayNextLeg={handlePlayNextLeg}
-            onAbandon={handleAbandonTournament}
-          />
+          {tournament.config.format === 'round_robin' ? (
+            <TournamentRoundRobinScreen
+              tournament={tournament}
+              matchup={matchup}
+              onPlayNextLeg={handlePlayNextLeg}
+              onAbandon={handleAbandonTournament}
+            />
+          ) : (
+            <TournamentBracketScreen
+              tournament={tournament}
+              matchup={matchup}
+              onPlayNextLeg={handlePlayNextLeg}
+              onAbandon={handleAbandonTournament}
+            />
+          )}
         </>
       )
     }

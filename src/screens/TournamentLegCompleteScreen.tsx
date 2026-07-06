@@ -67,8 +67,18 @@ export function TournamentLegCompleteScreen({
     matchup.legWins[slotB.playerId ?? ''] ?? 0
   } ${playerName(slotB.playerId)}`
 
-  const isFinal = matchup.round === tournament.rounds.length - 1
+  const isLeague = tournament.config.format === 'round_robin'
+  const eventJustFinished = tournament.status === 'complete'
   const advancesTo = matchup.status === 'complete' && matchup.winnerId ? playerName(matchup.winnerId) : null
+
+  let matchupMessage: string | null = null
+  if (eventJustFinished) {
+    matchupMessage = isLeague
+      ? `🏆 Tournament complete! ${playerName(tournament.championId)} finishes on top.`
+      : `🏆 ${advancesTo} wins the tournament!`
+  } else if (advancesTo) {
+    matchupMessage = isLeague ? `${advancesTo} wins the match.` : `${advancesTo} advances to the next round.`
+  }
 
   return (
     <div className="flex w-full flex-col items-center gap-6">
@@ -93,10 +103,8 @@ export function TournamentLegCompleteScreen({
         </div>
 
         <Panel title="Matchup" className="w-full max-w-[280px] justify-self-center md:justify-self-start">
-          {advancesTo ? (
-            <p className="m-0">
-              {isFinal ? `🏆 ${advancesTo} wins the tournament!` : `${advancesTo} advances to the next round.`}
-            </p>
+          {matchupMessage ? (
+            <p className="m-0">{matchupMessage}</p>
           ) : (
             <p className="m-0 text-ink-muted">First to {matchup.legsToWin} legs wins the matchup.</p>
           )}

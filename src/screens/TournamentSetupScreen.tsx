@@ -3,11 +3,13 @@ import type { GameMode, Player } from '../game/types'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { GameModeToggle } from '../components/GameModeToggle'
+import { TournamentFormatToggle } from '../components/TournamentFormatToggle'
 import { Panel, inputClass } from '../components/ui/Panel'
 import { RosterRow, ScrollShadow } from '../components/RosterPicker'
-import type { TournamentConfig } from '../tournament/tournamentTypes'
+import { buildTournamentConfig, type TournamentConfig } from '../tournament/tournamentTypes'
 
 const BEST_OF_OPTIONS = [1, 3, 5, 7] as const
+type TournamentFormat = TournamentConfig['format']
 
 interface TournamentSetupScreenProps {
   readonly onStart: (players: Player[], config: TournamentConfig) => void
@@ -21,12 +23,16 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
   const [bestOf, setBestOf] = useState<(typeof BEST_OF_OPTIONS)[number]>(3)
+  const [format, setFormat] = useState<TournamentFormat>('knockout')
+  const [matchesPerPair, setMatchesPerPair] = useState<1 | 2>(1)
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length < 3) return
+    if (players.length < 2) return
     const legsToWin = Math.ceil(bestOf / 2)
-    onStart(players, mode === 'x01' ? { mode, x01: { startingScore, doubleOut }, legsToWin } : { mode, legsToWin })
+    const modeConfig = mode === 'x01' ? { mode, x01: { startingScore, doubleOut }, legsToWin } : { mode, legsToWin }
+    const formatConfig = format === 'round_robin' ? { format, matchesPerPair } : { format }
+    onStart(players, buildTournamentConfig(modeConfig, formatConfig))
   }
 
   return (
@@ -62,7 +68,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
 
       <Panel title={`Players (${players.length})`} className="min-w-0">
         <ScrollShadow>
-          {players.length === 0 && <li className="text-ink-muted">Click a user to add them here. Need 3+.</li>}
+          {players.length === 0 && <li className="text-ink-muted">Click a user to add them here. Need 2+.</li>}
           {players.map((player) => (
             <RosterRow key={player.id} name={player.name} selected onMove={() => removeFromGame(player.id)} />
           ))}
@@ -70,7 +76,38 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
       </Panel>
 
       <Panel title="Tournament settings" className="flex min-w-0 flex-col gap-5">
+        <TournamentFormatToggle format={format} onChange={setFormat} />
+
         <GameModeToggle mode={mode} onChange={setMode} />
+
+        {format === 'round_robin' && (
+          <fieldset className="m-0 border-none p-0">
+            <legend className="mb-2 p-0 text-sm font-medium">Play each opponent</legend>
+            <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+              {(
+                [
+                  [1, 'Once'],
+                  [2, 'Twice'],
+                ] as const
+              ).map(([count, label]) => (
+                <button
+                  key={count}
+                  type="button"
+                  aria-pressed={matchesPerPair === count}
+                  onClick={() => setMatchesPerPair(count)}
+                  className={
+                    'h-10 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-base font-semibold transition-colors ' +
+                    (matchesPerPair === count
+                      ? 'bg-card text-ink shadow-sm'
+                      : 'bg-transparent text-ink-muted hover:text-ink')
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         {mode === 'x01' && (
           <fieldset className="m-0 border-none p-0">
@@ -128,7 +165,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
           </label>
         )}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length < 3}>
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length < 2}>
           Start Tournament
         </Button>
       </Panel>

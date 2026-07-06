@@ -2,7 +2,7 @@ import { ShotsBoard } from '../dartboard/ShotsBoard'
 import { Button } from '../components/ui/Button'
 import { Panel } from '../components/ui/Panel'
 import { listHistory } from '../stats/statsRepository'
-import { standings } from '../tournament/tournamentEngine'
+import { roundRobinLeaderboard, standings } from '../tournament/tournamentEngine'
 import {
   bracketRecap,
   cricketTournamentRecords,
@@ -40,6 +40,7 @@ function RecordRow({
 }
 
 export function TournamentChampionScreen({ tournament, onNewTournament }: TournamentChampionScreenProps) {
+  const isLeague = tournament.config.format === 'round_robin'
   const results = standings(tournament)
   const champion = results[0]
   const history = listHistory()
@@ -47,6 +48,7 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
   const records = tournamentRecords(tournament, history)
   const cricketRecords = cricketTournamentRecords(tournament, history)
   const recap = bracketRecap(tournament)
+  const leaderboardByPlayerId = new Map(roundRobinLeaderboard(tournament).map((s) => [s.player.id, s]))
 
   return (
     <div className="flex w-full flex-col items-center gap-6">
@@ -81,23 +83,32 @@ export function TournamentChampionScreen({ tournament, onNewTournament }: Tourna
 
         <Panel title="Standings" className="w-full max-w-[280px] justify-self-center md:justify-self-start">
           <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
-            {results.map((player, i) => (
-              <li key={player.id} className="flex items-center gap-2">
-                <span className="w-6 text-xl">{MEDALS[i] ?? ''}</span>
-                <span className="flex-1 truncate font-medium">{player.name}</span>
-                <span className="text-ink-muted tabular-nums">{i + 1}</span>
-              </li>
-            ))}
+            {results.map((player, i) => {
+              const standing = leaderboardByPlayerId.get(player.id)
+              return (
+                <li key={player.id} className="flex items-center gap-2">
+                  <span className="w-6 text-xl">{MEDALS[i] ?? ''}</span>
+                  <span className="flex-1 truncate font-medium">{player.name}</span>
+                  {isLeague && standing ? (
+                    <span className="text-ink-muted tabular-nums">
+                      {standing.matchesWon}-{standing.matchesPlayed - standing.matchesWon}
+                    </span>
+                  ) : (
+                    <span className="text-ink-muted tabular-nums">{i + 1}</span>
+                  )}
+                </li>
+              )
+            })}
           </ol>
         </Panel>
       </div>
 
-      <Panel title="Bracket recap" className="w-full max-w-lg">
+      <Panel title={isLeague ? 'Round recap' : 'Bracket recap'} className="w-full max-w-lg">
         <div className="flex flex-col gap-4">
           {recap.map((round, i) => (
             <div key={round.map((m) => `${m.playerAName}-${m.playerBName}`).join('|')}>
               <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {i === recap.length - 1 ? 'Final' : `Round ${i + 1}`}
+                {isLeague ? `Round ${i + 1}` : i === recap.length - 1 ? 'Final' : `Round ${i + 1}`}
               </h3>
               <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
                 {round.map((matchup) => (

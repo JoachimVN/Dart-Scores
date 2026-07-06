@@ -23,9 +23,19 @@ export interface Matchup {
 }
 
 /** `legsToWin`: legs needed to win a matchup, e.g. best-of-3 -> 2. */
-export type TournamentConfig =
+export type TournamentModeConfig =
   | { mode: 'x01'; x01: X01Config; legsToWin: number }
   | { mode: 'cricket'; legsToWin: number }
+
+/** `matchesPerPair` only applies to round_robin: 1 = each pair meets once, 2 = twice. */
+export type TournamentFormatConfig = { format: 'knockout' } | { format: 'round_robin'; matchesPerPair: 1 | 2 }
+
+export type TournamentConfig = TournamentModeConfig & TournamentFormatConfig
+
+/** Combines the mode/format halves of a config, keeping call sites (UI forms) from hand-casting. */
+export function buildTournamentConfig(mode: TournamentModeConfig, format: TournamentFormatConfig): TournamentConfig {
+  return { ...mode, ...format } as TournamentConfig
+}
 
 export interface Tournament {
   id: string
