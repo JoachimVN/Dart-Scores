@@ -1,11 +1,13 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import type { GameMode, Player } from '../game/types'
+import { standardCricketConfig, type CricketConfig } from '../game/cricket/cricketTypes'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { GameModeToggle } from '../components/GameModeToggle'
 import { TournamentFormatToggle } from '../components/TournamentFormatToggle'
 import { Panel, inputClass } from '../components/ui/Panel'
 import { RosterRow, ScrollShadow } from '../components/RosterPicker'
+import { CricketNumberPicker } from '../components/CricketNumberPicker'
 import { buildTournamentConfig, type TournamentConfig } from '../tournament/tournamentTypes'
 
 const BEST_OF_OPTIONS = [1, 3, 5, 7] as const
@@ -13,9 +15,12 @@ type TournamentFormat = TournamentConfig['format']
 
 interface TournamentSetupScreenProps {
   readonly onStart: (players: Player[], config: TournamentConfig) => void
+  readonly initialPlayers?: Player[]
+  /** Keeps the setup selection shared with the casual tab and return flows. */
+  readonly onPlayersChange?: (players: Player[]) => void
 }
 
-export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
+export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange }: TournamentSetupScreenProps) {
   const {
     availableUsers,
     players,
@@ -26,20 +31,25 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
     renameUser,
     addToGame,
     removeFromGame,
-  } = useRosterSelection()
+  } = useRosterSelection(initialPlayers)
 
   const [mode, setMode] = useState<GameMode>('x01')
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
   const [doubleOut, setDoubleOut] = useState(true)
+  const [cricketConfig, setCricketConfig] = useState<CricketConfig>(standardCricketConfig)
   const [bestOf, setBestOf] = useState<(typeof BEST_OF_OPTIONS)[number]>(3)
   const [format, setFormat] = useState<TournamentFormat>('knockout')
   const [matchesPerPair, setMatchesPerPair] = useState<1 | 2>(1)
 
+  useEffect(() => {
+    onPlayersChange?.(players)
+  }, [onPlayersChange, players])
+
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length < 2) return
+    if (players.length < 2 || (mode === 'cricket' && cricketConfig.targets.length === 0)) return
     const legsToWin = Math.ceil(bestOf / 2)
-    const modeConfig = mode === 'x01' ? { mode, x01: { startingScore, doubleOut }, legsToWin } : { mode, legsToWin }
+    const modeConfig = mode === 'x01' ? { mode, x01: { startingScore, doubleOut }, legsToWin } : { mode, cricket: cricketConfig, legsToWin }
     const formatConfig = format === 'round_robin' ? { format, matchesPerPair } : { format }
     onStart(players, buildTournamentConfig(modeConfig, formatConfig))
   }
@@ -149,6 +159,10 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
           </fieldset>
         )}
 
+        {mode === 'cricket' && (
+          <CricketNumberPicker targets={cricketConfig.targets} onChange={(targets) => setCricketConfig({ targets })} />
+        )}
+
         <fieldset className="m-0 border-none p-0">
           <legend className="mb-2 p-0 text-sm font-medium">Best of (per matchup)</legend>
           <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
@@ -181,7 +195,13 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
           </label>
         )}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length < 2}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          disabled={players.length < 2 || (mode === 'cricket' && cricketConfig.targets.length === 0)}
+        >
           Start Tournament
         </Button>
       </Panel>

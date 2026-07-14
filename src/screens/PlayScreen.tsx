@@ -4,9 +4,13 @@ import { BOARD_TOP_INSET_RATIO, Dartboard } from '../dartboard/Dartboard'
 import type { BoardThrow } from '../dartboard/dartboard.types'
 import { CheckoutCalculator } from '../components/CheckoutCalculator'
 import { CricketScoreboard } from '../components/CricketScoreboard'
+import { Button } from '../components/ui/Button'
+import { Panel } from '../components/ui/Panel'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
-import { lastCompletedTurn as lastCompletedCricketTurn, liveMarksAndPoints } from '../game/cricket/cricketEngine'
+import { cricketTargetOptions, lastCompletedTurn as lastCompletedCricketTurn, liveMarksAndPoints } from '../game/cricket/cricketEngine'
+import { cricketTargetLabel, type CricketTarget } from '../game/cricket/cricketTypes'
+import type { ThrowInput } from '../game/x01/x01Engine'
 import { lastCompletedTurn as lastCompletedX01Turn, liveRemaining } from '../game/x01/x01Engine'
 import type { GameState, Throw } from '../game/types'
 import { useWakeLock } from '../hooks/useWakeLock'
@@ -73,13 +77,15 @@ function buildCricketViewModel(game: Extract<GameState, { mode: 'cricket' }>): P
     lastTurn,
     bustedPlayerId: null, // Cricket has no bust concept
     valueFor: (playerId) => scoreboardEntries.find((e) => e.id === playerId)!.points,
-    rightPanel: <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} />,
+    rightPanel: (
+      <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} targets={cricket.config.targets} />
+    ),
   }
 }
 
 interface PlayScreenProps {
   game: GameState
-  onThrow: (throwInput: BoardThrow) => void
+  onThrow: (throwInput: ThrowInput) => void
   onUndo: () => void
   onRedo: () => void
   canRedo: boolean
@@ -91,16 +97,11 @@ interface PlayScreenProps {
 
 // The score list lives in a sidebar to the left of the board (not overlaid
 // on it), so it can never cover the clickable board area regardless of
-// player count or screen size. Undo/New Game/current-turn darts are small
-// enough to safely sit in the square board's own corner dead-space (outside
-// the drawn circle).
+// player count. The current turn badges fit in the board's lower dead-space;
+// action buttons deliberately live below the square so narrow boards can
+// never crop their labels against the board edge.
 const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
-// Preflight gives buttons `font: inherit`, so these scale with the corner's
-// cqw-clamped font size instead of a fixed px height.
-const CORNER_BUTTON_CLASS =
-  'cursor-pointer rounded-[0.4em] border border-line-strong bg-card px-[0.6em] py-[0.35em] font-medium ' +
-  'text-ink transition-colors hover:bg-sunken disabled:opacity-40 disabled:hover:bg-card'
 const SIDEBAR_WIDTH = 210 // px, fixed so board sizing math stays simple; names truncate to fit
 const SIDEBAR_GAP = 12
 // Estimated rendered heights (incl. gap) used to decide how many score rows
@@ -140,6 +141,7 @@ export function PlayScreen({
   const isBetweenTurns = currentTurnThrows.length === 0
   const canUndo = currentTurnThrows.length > 0 || !!lastTurn
   const isWide = useIsWideLayout()
+  const [pendingCricketThrow, setPendingCricketThrow] = useState<{ throwInput: BoardThrow; targets: CricketTarget[] } | null>(null)
 
   // The dart marks/turn badges deliberately keep showing the player who just
   // went until their replacement actually throws (see Dartboard/TurnPanel) -
@@ -217,6 +219,26 @@ export function PlayScreen({
     onRedo()
   }, [canRedo, onRedo])
 
+  function handleBoardThrow(throwInput: BoardThrow) {
+    if (game.mode !== 'cricket') {
+      onThrow(throwInput)
+      return
+    }
+
+    const targets = cricketTargetOptions(throwInput, game.cricket.config.targets)
+    if (targets.length < 2) {
+      onThrow(targets[0] === undefined ? throwInput : { ...throwInput, cricketTarget: targets[0] })
+      return
+    }
+    setPendingCricketThrow({ throwInput, targets })
+  }
+
+  function chooseCricketTarget(target: CricketTarget) {
+    if (!pendingCricketThrow) return
+    onThrow({ ...pendingCricketThrow.throwInput, cricketTarget: target })
+    setPendingCricketThrow(null)
+  }
+
   // Arrow keys are the primary shortcut (no modifier, easy to discover);
   // Ctrl+Z/Ctrl+Y and Ctrl+Shift+Z are offered on top for players used to
   // those editor/OS conventions. All are equivalent to the buttons below.
@@ -248,57 +270,70 @@ export function PlayScreen({
     : 'min(92vw, 70vh)'
 
   const boardBox = (
-    <div
-      ref={boardRef}
-      style={{
-        position: 'relative',
-        width: boardWidth,
-        height: boardWidth,
-        containerType: 'inline-size',
-      }}
-    >
-      <Dartboard onThrow={onThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
-
+    <div className="flex flex-col items-center gap-2" style={{ width: boardWidth }}>
       <div
-        className="absolute flex gap-[0.4em]"
-        style={{ top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
+        ref={boardRef}
+        style={{ position: 'relative', width: '100%', aspectRatio: '1', containerType: 'inline-size' }}
       >
-        <button type="button" onClick={handleRestart} className={CORNER_BUTTON_CLASS}>
-          Restart
-        </button>
-        <button type="button" onClick={handleQuit} className={CORNER_BUTTON_CLASS}>
-          Quit
-        </button>
+        <Dartboard onThrow={handleBoardThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
+
+        <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
+        </div>
       </div>
 
-      <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
-      </div>
-
-      <div
-        className="absolute flex gap-[0.4em]"
-        style={{ bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
-      >
-        <button
-          type="button"
-          onClick={handleUndo}
-          disabled={!canUndo}
-          className={CORNER_BUTTON_CLASS}
-          title="Undo (← or Ctrl+Z)"
-        >
-          ← Undo
-        </button>
-        <button
-          type="button"
-          onClick={handleRedo}
-          disabled={!canRedo}
-          className={CORNER_BUTTON_CLASS}
-          title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
-        >
-          Redo →
-        </button>
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <button type="button" onClick={handleRestart} className="board-action-button">
+            Restart
+          </button>
+          <button type="button" onClick={handleQuit} className="board-action-button">
+            Quit
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="board-action-button"
+            title="Undo (← or Ctrl+Z)"
+          >
+            ← Undo
+          </button>
+          <button
+            type="button"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="board-action-button"
+            title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
+          >
+            Redo →
+          </button>
+        </div>
       </div>
     </div>
+  )
+
+  const targetChooser = pendingCricketThrow && (
+    <dialog
+      open
+      className="fixed inset-0 z-20 m-0 flex max-h-none max-w-none items-center justify-center border-0 bg-black/45 p-4"
+      aria-modal="true"
+      aria-label="Choose Cricket target"
+    >
+      <Panel className="w-full max-w-sm shadow-xl">
+        <h2 className="m-0 text-lg font-bold">Choose target</h2>
+        <p className="mt-1 mb-4 text-sm text-ink-muted">This dart matches more than one Cricket target.</p>
+        <div className="grid gap-2">
+          {pendingCricketThrow.targets.map((target) => (
+            <Button key={target} variant="primary" size="lg" className="w-full" onClick={() => chooseCricketTarget(target)}>
+              {cricketTargetLabel(target)}
+            </Button>
+          ))}
+        </div>
+      </Panel>
+    </dialog>
   )
 
   if (!isWide) {
@@ -314,6 +349,7 @@ export function PlayScreen({
           />
         </div>
         {boardBox}
+        {targetChooser}
         {rightPanel && <div className="w-full max-w-md">{rightPanel}</div>}
       </div>
     )
@@ -342,6 +378,7 @@ export function PlayScreen({
       </div>
 
       {boardBox}
+      {targetChooser}
 
       {rightPanel && (
         <div className="justify-self-end" style={{ width: SIDEBAR_WIDTH, marginTop: sidebarTopOffset }}>

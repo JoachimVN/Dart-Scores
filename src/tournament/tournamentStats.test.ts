@@ -9,6 +9,7 @@ import {
   tournamentRecords,
 } from './tournamentStats'
 import type { Player } from '../game/types'
+import { standardCricketConfig } from '../game/cricket/cricketTypes'
 import type { TournamentConfig } from './tournamentTypes'
 
 const config: TournamentConfig = {
@@ -17,7 +18,7 @@ const config: TournamentConfig = {
   x01: { startingScore: 501, doubleOut: true },
   legsToWin: 2,
 }
-const cricketConfig: TournamentConfig = { format: 'knockout', mode: 'cricket', legsToWin: 2 }
+const cricketConfig: TournamentConfig = { format: 'knockout', mode: 'cricket', cricket: standardCricketConfig(), legsToWin: 2 }
 
 function playersOf(count: number): Player[] {
   return Array.from({ length: count }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}` }))

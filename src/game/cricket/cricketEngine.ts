@@ -2,27 +2,29 @@ import { generateId } from '../../shared/id'
 import type { Player, Throw } from '../types'
 import { mostRecentTurn } from '../turnUtils'
 import {
-  CRICKET_NUMBERS,
+  standardCricketConfig,
+  type CricketConfig,
   type CricketMarks,
-  type CricketNumber,
   type CricketPlayerState,
   type CricketState,
+  type CricketTarget,
   type CricketTurn,
 } from './cricketTypes'
 
-function emptyMarks(): CricketMarks {
-  return { 20: 0, 19: 0, 18: 0, 17: 0, 16: 0, 15: 0, 25: 0 }
+function emptyMarks(targets: CricketTarget[]): CricketMarks {
+  return Object.fromEntries(targets.map((target) => [target, 0])) as CricketMarks
 }
 
-export function createCricketGame(players: Player[]): CricketState {
+export function createCricketGame(players: Player[], config: CricketConfig = standardCricketConfig()): CricketState {
   const playerStates: CricketPlayerState[] = players.map((player) => ({
     playerId: player.id,
-    marks: emptyMarks(),
+    marks: emptyMarks(config.targets),
     points: 0,
     turns: [],
   }))
 
   return {
+    config,
     playerStates,
     currentPlayerIndex: 0,
     currentTurnThrows: [],
@@ -32,36 +34,47 @@ export function createCricketGame(players: Player[]): CricketState {
 
 export type ThrowInput = Omit<Throw, 'id' | 'timestamp'>
 
-/**
- * Which cricket number a dart hit, and how many marks it's worth. Only
- * 15-20 and the bull count for Cricket - everything else (segments 1-14, or
- * a miss) is a no-op that still consumes a dart of the turn. The bull marks
- * like a "double": outer bull is 1 mark, bullseye is 2.
- */
-function cricketHit(dart: ThrowInput): { number: CricketNumber; marks: number } | null {
-  if (dart.ring === 'bullseye') return { number: 25, marks: 2 }
-  if (dart.ring === 'outerBull') return { number: 25, marks: 1 }
-  if (dart.segment === null || dart.segment < 15 || dart.segment > 20) return null
+/** Every configured target that this physical dart can satisfy. */
+export function cricketTargetOptions(dart: ThrowInput, targets: CricketTarget[]): CricketTarget[] {
+  const options: CricketTarget[] = []
+  if (dart.ring === 'bullseye' || dart.ring === 'outerBull') {
+    if (targets.includes(25)) options.push(25)
+    return options
+  }
+  if (dart.segment !== null && targets.includes(dart.segment)) options.push(dart.segment)
+  if (dart.ring === 'double' && targets.includes('double')) options.push('double')
+  if (dart.ring === 'treble' && targets.includes('triple')) options.push('triple')
+  return options
+}
 
-  const number = dart.segment as CricketNumber
-  if (dart.ring === 'treble') return { number, marks: 3 }
-  if (dart.ring === 'double') return { number, marks: 2 }
-  return { number, marks: 1 } // innerSingle or outerSingle
+function cricketHit(
+  dart: ThrowInput,
+  targets: CricketTarget[],
+): { target: CricketTarget; marks: number; pointsPerMark: number } | null {
+  const options = cricketTargetOptions(dart, targets)
+  const target = dart.cricketTarget && options.includes(dart.cricketTarget) ? dart.cricketTarget : options[0]
+  if (target === undefined) return null
+
+  if (target === 'double' || target === 'triple') return { target, marks: 1, pointsPerMark: dart.value }
+  if (target === 25) return { target, marks: dart.ring === 'bullseye' ? 2 : 1, pointsPerMark: 25 }
+  if (dart.ring === 'treble') return { target, marks: 3, pointsPerMark: target }
+  if (dart.ring === 'double') return { target, marks: 2, pointsPerMark: target }
+  return { target, marks: 1, pointsPerMark: target }
 }
 
 /** A number is dead (scores nothing more for anyone) once every player except `forPlayerIndex` has closed it. */
-function isDeadForOthers(playerStates: CricketPlayerState[], forPlayerIndex: number, number: CricketNumber): boolean {
-  return playerStates.every((ps, i) => i === forPlayerIndex || ps.marks[number] === 3)
+function isDeadForOthers(playerStates: CricketPlayerState[], forPlayerIndex: number, target: CricketTarget): boolean {
+  return playerStates.every((ps, i) => i === forPlayerIndex || ps.marks[target] === 3)
 }
 
-function isAllClosed(marks: CricketMarks): boolean {
-  return CRICKET_NUMBERS.every((n) => marks[n] === 3)
+function isAllClosed(marks: CricketMarks, targets: CricketTarget[]): boolean {
+  return targets.length > 0 && targets.every((target) => marks[target] === 3)
 }
 
 /**
  * Folds a sequence of darts onto a player's committed marks/points. Each
- * dart's marks split between closing the number (up to 3) and, if any marks
- * are left over, scoring points equal to the number's value per extra mark -
+ * dart's marks split between closing its target (up to 3) and, if any marks
+ * are left over, scoring the target's configured dart value per extra mark -
  * but only while some other player hasn't closed that number yet. A single
  * dart can both close a number and score off it (e.g. 2 existing marks, then
  * a treble hits: 1 mark closes, 2 marks' worth of points score).
@@ -72,22 +85,23 @@ function foldCricketThrows(
   throws: Throw[],
   playerStates: CricketPlayerState[],
   playerIndex: number,
+  targets: CricketTarget[],
 ): { marks: CricketMarks; points: number } {
   let marks = marksBefore
   let points = pointsBefore
 
   for (const dart of throws) {
-    const hit = cricketHit(dart)
+    const hit = cricketHit(dart, targets)
     if (!hit) continue
 
-    const currentCount = marks[hit.number]
+    const currentCount = marks[hit.target]
     const toClose = Math.min(hit.marks, 3 - currentCount)
     const overflow = hit.marks - toClose
     const newCount = currentCount + toClose
-    if (newCount !== currentCount) marks = { ...marks, [hit.number]: newCount }
+    if (newCount !== currentCount) marks = { ...marks, [hit.target]: newCount }
 
-    if (overflow > 0 && !isDeadForOthers(playerStates, playerIndex, hit.number)) {
-      points += overflow * hit.number
+    if (overflow > 0 && !isDeadForOthers(playerStates, playerIndex, hit.target)) {
+      points += overflow * hit.pointsPerMark
     }
   }
 
@@ -113,10 +127,17 @@ export function applyThrow(state: CricketState, throwInput: ThrowInput): Cricket
 
   const marksBefore = currentPlayerState.marks
   const pointsBefore = currentPlayerState.points
-  const { marks, points } = foldCricketThrows(marksBefore, pointsBefore, turnThrows, state.playerStates, playerIndex)
+  const { marks, points } = foldCricketThrows(
+    marksBefore,
+    pointsBefore,
+    turnThrows,
+    state.playerStates,
+    playerIndex,
+    state.config.targets,
+  )
 
   const opponentsPoints = state.playerStates.filter((_, i) => i !== playerIndex).map((ps) => ps.points)
-  const win = isAllClosed(marks) && points >= Math.max(0, ...opponentsPoints)
+  const win = isAllClosed(marks, state.config.targets) && points >= Math.max(0, ...opponentsPoints)
   const turnComplete = win || turnThrows.length === 3
 
   if (!turnComplete) {
@@ -198,6 +219,7 @@ export function liveMarksAndPoints(state: CricketState): { marks: CricketMarks; 
     state.currentTurnThrows,
     state.playerStates,
     state.currentPlayerIndex,
+    state.config.targets,
   )
 }
 

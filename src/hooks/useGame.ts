@@ -20,7 +20,7 @@ function buildGameState(params: NewGameParams): GameState {
   if (params.mode === 'x01') {
     return { ...base, mode: 'x01', x01: createX01Game(params.config, params.players) }
   }
-  return { ...base, mode: 'cricket', cricket: createCricketGame(params.players) }
+  return { ...base, mode: 'cricket', cricket: createCricketGame(params.players, params.config) }
 }
 
 /** Applies one dart to whichever mode's engine the game is using, and recomputes status from its winnerId. */

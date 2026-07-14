@@ -1,11 +1,13 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import type { NewGameParams, Player } from '../game/types'
 import type { X01Config } from '../game/x01/x01Types'
+import { standardCricketConfig, type CricketConfig } from '../game/cricket/cricketTypes'
 import { useRosterSelection } from '../players/useRosterSelection'
 import { Button } from '../components/ui/Button'
 import { GameModeToggle } from '../components/GameModeToggle'
 import { Panel, inputClass } from '../components/ui/Panel'
 import { RosterRow, ScrollShadow } from '../components/RosterPicker'
+import { CricketNumberPicker } from '../components/CricketNumberPicker'
 
 interface SetupScreenProps {
   readonly onStart: (params: NewGameParams) => void
@@ -14,9 +16,19 @@ interface SetupScreenProps {
   /** Pre-selects the last-used mode/config (e.g. after "New game"), instead of always resetting to X01/501/double-out. */
   readonly initialMode?: NewGameParams['mode']
   readonly initialX01Config?: X01Config
+  readonly initialCricketConfig?: CricketConfig
+  /** Keeps the setup selection shared with the tournament tab and return flows. */
+  readonly onPlayersChange?: (players: Player[]) => void
 }
 
-export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', initialX01Config }: SetupScreenProps) {
+export function SetupScreen({
+  onStart,
+  initialPlayers,
+  initialMode = 'x01',
+  initialX01Config,
+  initialCricketConfig,
+  onPlayersChange,
+}: SetupScreenProps) {
   const {
     availableUsers,
     players,
@@ -32,11 +44,16 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
   const [mode, setMode] = useState<NewGameParams['mode']>(initialMode)
   const [startingScore, setStartingScore] = useState<301 | 501>((initialX01Config?.startingScore as 301 | 501) ?? 501)
   const [doubleOut, setDoubleOut] = useState(initialX01Config?.doubleOut ?? true)
+  const [cricketConfig, setCricketConfig] = useState<CricketConfig>(initialCricketConfig ?? standardCricketConfig())
+
+  useEffect(() => {
+    onPlayersChange?.(players)
+  }, [onPlayersChange, players])
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length === 0) return
-    onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, players })
+    if (players.length === 0 || (mode === 'cricket' && cricketConfig.targets.length === 0)) return
+    onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, config: cricketConfig, players })
   }
 
   return (
@@ -131,13 +148,19 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
             </label>
           </>
         ) : (
-          <p className="m-0 text-sm text-ink-muted">
-            Standard Cricket: 20 down to 15, plus the bull. Close each number with 3 marks, then keep hitting it to
-            score points off opponents who haven't closed it yet.
-          </p>
+          <CricketNumberPicker
+            targets={cricketConfig.targets}
+            onChange={(targets) => setCricketConfig({ targets })}
+          />
         )}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          disabled={players.length === 0 || (mode === 'cricket' && cricketConfig.targets.length === 0)}
+        >
           Start Game
         </Button>
       </Panel>

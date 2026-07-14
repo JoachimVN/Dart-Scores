@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { standardCricketConfig } from '../game/cricket/cricketTypes'
 import { STORAGE_KEY, defaultRoot, defaultSettings } from './schema'
 import { loadRoot, saveRoot } from './storage'
 
@@ -198,5 +199,59 @@ describe('migrations', () => {
     const v8Data = { players: [], activeGame: null, settings: defaultSettings(), history: [], activeTournament: null }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 8, data: v8Data }))
     expect(loadRoot()).toEqual(v8Data)
+  })
+
+  it('migrates v9 Cricket tournament settings to the standard target list', () => {
+    const v9Data = {
+      players: [],
+      activeGame: null,
+      settings: defaultSettings(),
+      history: [],
+      activeTournament: {
+        id: 't1',
+        status: 'in_progress',
+        config: { format: 'knockout', mode: 'cricket', legsToWin: 2 },
+        players: [],
+        rounds: [],
+        championId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 9, data: v9Data }))
+    expect(loadRoot()).toEqual({
+      ...v9Data,
+      activeTournament: {
+        ...v9Data.activeTournament,
+        config: { ...v9Data.activeTournament.config, cricket: standardCricketConfig() },
+      },
+    })
+  })
+
+  it('migrates v10 Cricket target numbers to the generalized targets field', () => {
+    const v10Data = {
+      players: [],
+      settings: defaultSettings(),
+      history: [],
+      activeGame: null,
+      activeTournament: {
+        id: 't1',
+        status: 'in_progress',
+        config: { format: 'knockout', mode: 'cricket', cricket: { numbers: [20, 19, 25] }, legsToWin: 2 },
+        players: [],
+        rounds: [],
+        championId: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 10, data: v10Data }))
+    expect(loadRoot()).toEqual({
+      ...v10Data,
+      activeTournament: {
+        ...v10Data.activeTournament,
+        config: { ...v10Data.activeTournament.config, cricket: { targets: [20, 19, 25] } },
+      },
+    })
   })
 })

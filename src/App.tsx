@@ -1,8 +1,9 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useState, type ReactNode } from 'react'
 import { TopBar } from './components/TopBar'
 import { UpdateToast } from './components/UpdateToast'
 import type { GameMode, GameState, Player } from './game/types'
 import type { X01Config } from './game/x01/x01Types'
+import { standardCricketConfig, type CricketConfig } from './game/cricket/cricketTypes'
 import { useGame } from './hooks/useGame'
 import { useTheme } from './hooks/useTheme'
 import { useTournament } from './hooks/useTournament'
@@ -40,7 +41,9 @@ interface MainContentArgs {
   readonly lastPlayers: Player[]
   readonly lastMode: GameMode
   readonly lastX01Config: X01Config
-  readonly topBar: (modeLabel: string) => ReactNode
+  readonly lastCricketConfig: CricketConfig
+  readonly selectedSetupPlayers: Player[]
+  readonly topBar: (modeLabel: string, compact?: boolean) => ReactNode
   readonly startGame: ReturnType<typeof useGame>['startGame']
   readonly startTournament: ReturnType<typeof useTournament>['startTournament']
   readonly onThrow: ReturnType<typeof useGame>['throwDart']
@@ -52,6 +55,7 @@ interface MainContentArgs {
   readonly onPlayNextLeg: () => void
   readonly onAbandonTournament: () => void
   readonly onSetupTabChange: (tab: 'casual' | 'tournament') => void
+  readonly onSetupPlayersChange: (players: Player[]) => void
 }
 
 /** The tab switcher plus whichever roster screen (casual/tournament) is currently selected. */
@@ -77,12 +81,18 @@ function SetupTabs(args: MainContentArgs): ReactNode {
       {args.setupTab === 'casual' ? (
         <SetupScreen
           onStart={args.startGame}
-          initialPlayers={args.lastPlayers}
+          initialPlayers={args.selectedSetupPlayers}
           initialMode={args.lastMode}
           initialX01Config={args.lastX01Config}
+          initialCricketConfig={args.lastCricketConfig}
+          onPlayersChange={args.onSetupPlayersChange}
         />
       ) : (
-        <TournamentSetupScreen onStart={args.startTournament} />
+        <TournamentSetupScreen
+          onStart={args.startTournament}
+          initialPlayers={args.selectedSetupPlayers}
+          onPlayersChange={args.onSetupPlayersChange}
+        />
       )}
     </>
   )
@@ -100,7 +110,7 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
     if (!legMatchup) return null
     return (
       <>
-        {topBar('Tournament')}
+        {topBar('Tournament', true)}
         <TournamentLegCompleteScreen
           game={game}
           matchup={legMatchup}
@@ -114,17 +124,20 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
 
   if (game) {
     return (
-      <PlayScreen
-        game={game}
-        onThrow={args.onThrow}
-        onUndo={args.onUndo}
-        onRedo={args.onRedo}
-        canRedo={args.canRedo}
-        onNewGame={args.onNewGame}
-        onRestart={args.onRematch}
-        useDartNotation={settings.useDartNotation}
-        showCheckoutSuggestions={settings.showCheckoutSuggestions}
-      />
+      <>
+        {topBar('Tournament', true)}
+        <PlayScreen
+          game={game}
+          onThrow={args.onThrow}
+          onUndo={args.onUndo}
+          onRedo={args.onRedo}
+          canRedo={args.canRedo}
+          onNewGame={args.onNewGame}
+          onRestart={args.onRematch}
+          useDartNotation={settings.useDartNotation}
+          showCheckoutSuggestions={settings.showCheckoutSuggestions}
+        />
+      </>
     )
   }
 
@@ -187,17 +200,20 @@ function renderCasualContent(args: MainContentArgs): ReactNode {
   }
 
   return (
-    <PlayScreen
-      game={game}
-      onThrow={args.onThrow}
-      onUndo={args.onUndo}
-      onRedo={args.onRedo}
-      canRedo={args.canRedo}
-      onNewGame={args.onNewGame}
-      onRestart={args.onRematch}
-      useDartNotation={settings.useDartNotation}
-      showCheckoutSuggestions={settings.showCheckoutSuggestions}
-    />
+    <>
+      {topBar(game.mode === 'x01' ? 'X01' : 'Cricket', true)}
+      <PlayScreen
+        game={game}
+        onThrow={args.onThrow}
+        onUndo={args.onUndo}
+        onRedo={args.onRedo}
+        canRedo={args.canRedo}
+        onNewGame={args.onNewGame}
+        onRestart={args.onRematch}
+        useDartNotation={settings.useDartNotation}
+        showCheckoutSuggestions={settings.showCheckoutSuggestions}
+      />
+    </>
   )
 }
 
@@ -215,6 +231,8 @@ function App() {
   const [lastPlayers, setLastPlayers] = useState<Player[]>([])
   const [lastMode, setLastMode] = useState<GameMode>('x01')
   const [lastX01Config, setLastX01Config] = useState<X01Config>({ startingScore: 501, doubleOut: true })
+  const [lastCricketConfig, setLastCricketConfig] = useState<CricketConfig>(standardCricketConfig)
+  const [selectedSetupPlayers, setSelectedSetupPlayers] = useState<Player[]>([])
   const [setupTab, setSetupTab] = useState<'casual' | 'tournament'>('casual')
 
   // Captures who just played (and the mode/config they played with) before
@@ -226,8 +244,10 @@ function App() {
   function handleNewGame() {
     if (game && !tournament) {
       setLastPlayers(game.players)
+      setSelectedSetupPlayers(game.players)
       setLastMode(game.mode)
       if (game.mode === 'x01') setLastX01Config(game.x01.config)
+      else setLastCricketConfig(game.cricket.config)
     }
     newGame()
   }
@@ -238,7 +258,11 @@ function App() {
   // scratch, since a leg's players/config are just the current game's.
   function handleRematch() {
     if (!game) return
-    startGame(game.mode === 'x01' ? { mode: 'x01', config: game.x01.config, players: game.players } : { mode: 'cricket', players: game.players })
+    startGame(
+      game.mode === 'x01'
+        ? { mode: 'x01', config: game.x01.config, players: game.players }
+        : { mode: 'cricket', config: game.cricket.config, players: game.players },
+    )
   }
 
   function handlePlayNextLeg() {
@@ -246,13 +270,24 @@ function App() {
     const ids = matchup.players.map((slot) => slot.playerId).filter((id): id is string => id !== null)
     const legPlayers = ids.map((id) => tournament.players.find((p) => p.id === id)!).filter(Boolean)
     const { config } = tournament
-    startGame(config.mode === 'x01' ? { mode: 'x01', config: config.x01, players: legPlayers } : { mode: 'cricket', players: legPlayers })
+    startGame(
+      config.mode === 'x01'
+        ? { mode: 'x01', config: config.x01, players: legPlayers }
+        : { mode: 'cricket', config: config.cricket, players: legPlayers },
+    )
   }
 
   function handleAbandonTournament() {
+    if (tournament) setSelectedSetupPlayers(tournament.players)
     abandonTournament()
     setSetupTab('tournament')
   }
+
+  const handleSetupPlayersChange = useCallback((players: Player[]) => {
+    setSelectedSetupPlayers((current) =>
+      current.length === players.length && current.every((player, index) => player.id === players[index].id) ? current : players,
+    )
+  }, [])
 
   // Applies globally regardless of which screen renders below (including Play,
   // which has no top bar of its own).
@@ -263,9 +298,10 @@ function App() {
     updateSettings(patch)
   }
 
-  const topBar = (modeLabel: string) => (
+  const topBar = (modeLabel: string, compact = false) => (
     <TopBar
       modeLabel={modeLabel}
+      compact={compact}
       settings={settings}
       onSettingsChange={handleSettingsChange}
       onOpenStats={() => setView('stats')}
@@ -282,6 +318,8 @@ function App() {
     lastPlayers,
     lastMode,
     lastX01Config,
+    lastCricketConfig,
+    selectedSetupPlayers,
     topBar,
     startGame,
     startTournament,
@@ -294,6 +332,7 @@ function App() {
     onPlayNextLeg: handlePlayNextLeg,
     onAbandonTournament: handleAbandonTournament,
     onSetupTabChange: setSetupTab,
+    onSetupPlayersChange: handleSetupPlayersChange,
   })
 
   return (
