@@ -73,7 +73,9 @@ function buildCricketViewModel(game: Extract<GameState, { mode: 'cricket' }>): P
     lastTurn,
     bustedPlayerId: null, // Cricket has no bust concept
     valueFor: (playerId) => scoreboardEntries.find((e) => e.id === playerId)!.points,
-    rightPanel: <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} />,
+    rightPanel: (
+      <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} numbers={cricket.config.numbers} />
+    ),
   }
 }
 
@@ -91,16 +93,11 @@ interface PlayScreenProps {
 
 // The score list lives in a sidebar to the left of the board (not overlaid
 // on it), so it can never cover the clickable board area regardless of
-// player count or screen size. Undo/New Game/current-turn darts are small
-// enough to safely sit in the square board's own corner dead-space (outside
-// the drawn circle).
+// player count. The current turn badges fit in the board's lower dead-space;
+// action buttons deliberately live below the square so narrow boards can
+// never crop their labels against the board edge.
 const CORNER_INSET = '4%'
 const CORNER_FONT_SIZE = 'clamp(10px, 3cqw, 17px)'
-// Preflight gives buttons `font: inherit`, so these scale with the corner's
-// cqw-clamped font size instead of a fixed px height.
-const CORNER_BUTTON_CLASS =
-  'cursor-pointer rounded-[0.4em] border border-line-strong bg-card px-[0.6em] py-[0.35em] font-medium ' +
-  'text-ink transition-colors hover:bg-sunken disabled:opacity-40 disabled:hover:bg-card'
 const SIDEBAR_WIDTH = 210 // px, fixed so board sizing math stays simple; names truncate to fit
 const SIDEBAR_GAP = 12
 // Estimated rendered heights (incl. gap) used to decide how many score rows
@@ -248,55 +245,47 @@ export function PlayScreen({
     : 'min(92vw, 70vh)'
 
   const boardBox = (
-    <div
-      ref={boardRef}
-      style={{
-        position: 'relative',
-        width: boardWidth,
-        height: boardWidth,
-        containerType: 'inline-size',
-      }}
-    >
-      <Dartboard onThrow={onThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
-
+    <div className="flex flex-col items-center gap-2" style={{ width: boardWidth }}>
       <div
-        className="absolute flex gap-[0.4em]"
-        style={{ top: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
+        ref={boardRef}
+        style={{ position: 'relative', width: '100%', aspectRatio: '1', containerType: 'inline-size' }}
       >
-        <button type="button" onClick={handleRestart} className={CORNER_BUTTON_CLASS}>
-          Restart
-        </button>
-        <button type="button" onClick={handleQuit} className={CORNER_BUTTON_CLASS}>
-          Quit
-        </button>
+        <Dartboard onThrow={onThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
+
+        <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+          <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
+        </div>
       </div>
 
-      <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
-        <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
-      </div>
-
-      <div
-        className="absolute flex gap-[0.4em]"
-        style={{ bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}
-      >
-        <button
-          type="button"
-          onClick={handleUndo}
-          disabled={!canUndo}
-          className={CORNER_BUTTON_CLASS}
-          title="Undo (← or Ctrl+Z)"
-        >
-          ← Undo
-        </button>
-        <button
-          type="button"
-          onClick={handleRedo}
-          disabled={!canRedo}
-          className={CORNER_BUTTON_CLASS}
-          title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
-        >
-          Redo →
-        </button>
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <button type="button" onClick={handleRestart} className="board-action-button">
+            Restart
+          </button>
+          <button type="button" onClick={handleQuit} className="board-action-button">
+            Quit
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="board-action-button"
+            title="Undo (← or Ctrl+Z)"
+          >
+            ← Undo
+          </button>
+          <button
+            type="button"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="board-action-button"
+            title="Redo (→ or Ctrl+Y / Ctrl+Shift+Z)"
+          >
+            Redo →
+          </button>
+        </div>
       </div>
     </div>
   )

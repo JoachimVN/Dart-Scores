@@ -56,6 +56,12 @@ describe('createCricketGame', () => {
     expect(state.currentTurnThrows).toEqual([])
     expect(state.winnerId).toBeNull()
   })
+
+  it('initializes only the configured targets', () => {
+    const state = createCricketGame(players, { numbers: [14, 13, 25] })
+    expect(state.config.numbers).toEqual([14, 13, 25])
+    expect(state.playerStates[0].marks).toEqual({ 13: 0, 14: 0, 25: 0 })
+  })
 })
 
 describe('applyThrow', () => {
@@ -141,6 +147,14 @@ describe('applyThrow', () => {
     expect(state.playerStates[0].points).toBe(0)
     expect(state.playerStates[0].marks).toMatchObject({ 20: 0, 19: 0, 18: 0, 17: 0, 16: 0, 15: 0, 25: 0 })
     expect(state.currentPlayerIndex).toBe(1)
+  })
+
+  it('uses the selected targets instead of the standard Cricket range', () => {
+    let state = createCricketGame(players, { numbers: [14] })
+    state = applyThrow(state, treble(14))
+    expect(liveMarksAndPoints(state).marks[14]).toBe(3)
+    state = applyThrow(state, treble(20))
+    expect(liveMarksAndPoints(state).marks[14]).toBe(3)
   })
 
   it('wins mid-turn (before the 3rd dart) when closing the last number with points already tied', () => {

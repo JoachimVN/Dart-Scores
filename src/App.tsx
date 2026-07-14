@@ -3,6 +3,7 @@ import { TopBar } from './components/TopBar'
 import { UpdateToast } from './components/UpdateToast'
 import type { GameMode, GameState, Player } from './game/types'
 import type { X01Config } from './game/x01/x01Types'
+import { standardCricketConfig, type CricketConfig } from './game/cricket/cricketTypes'
 import { useGame } from './hooks/useGame'
 import { useTheme } from './hooks/useTheme'
 import { useTournament } from './hooks/useTournament'
@@ -40,6 +41,7 @@ interface MainContentArgs {
   readonly lastPlayers: Player[]
   readonly lastMode: GameMode
   readonly lastX01Config: X01Config
+  readonly lastCricketConfig: CricketConfig
   readonly topBar: (modeLabel: string) => ReactNode
   readonly startGame: ReturnType<typeof useGame>['startGame']
   readonly startTournament: ReturnType<typeof useTournament>['startTournament']
@@ -80,6 +82,7 @@ function SetupTabs(args: MainContentArgs): ReactNode {
           initialPlayers={args.lastPlayers}
           initialMode={args.lastMode}
           initialX01Config={args.lastX01Config}
+          initialCricketConfig={args.lastCricketConfig}
         />
       ) : (
         <TournamentSetupScreen onStart={args.startTournament} />
@@ -215,6 +218,7 @@ function App() {
   const [lastPlayers, setLastPlayers] = useState<Player[]>([])
   const [lastMode, setLastMode] = useState<GameMode>('x01')
   const [lastX01Config, setLastX01Config] = useState<X01Config>({ startingScore: 501, doubleOut: true })
+  const [lastCricketConfig, setLastCricketConfig] = useState<CricketConfig>(standardCricketConfig)
   const [setupTab, setSetupTab] = useState<'casual' | 'tournament'>('casual')
 
   // Captures who just played (and the mode/config they played with) before
@@ -228,6 +232,7 @@ function App() {
       setLastPlayers(game.players)
       setLastMode(game.mode)
       if (game.mode === 'x01') setLastX01Config(game.x01.config)
+      else setLastCricketConfig(game.cricket.config)
     }
     newGame()
   }
@@ -238,7 +243,11 @@ function App() {
   // scratch, since a leg's players/config are just the current game's.
   function handleRematch() {
     if (!game) return
-    startGame(game.mode === 'x01' ? { mode: 'x01', config: game.x01.config, players: game.players } : { mode: 'cricket', players: game.players })
+    startGame(
+      game.mode === 'x01'
+        ? { mode: 'x01', config: game.x01.config, players: game.players }
+        : { mode: 'cricket', config: game.cricket.config, players: game.players },
+    )
   }
 
   function handlePlayNextLeg() {
@@ -246,7 +255,11 @@ function App() {
     const ids = matchup.players.map((slot) => slot.playerId).filter((id): id is string => id !== null)
     const legPlayers = ids.map((id) => tournament.players.find((p) => p.id === id)!).filter(Boolean)
     const { config } = tournament
-    startGame(config.mode === 'x01' ? { mode: 'x01', config: config.x01, players: legPlayers } : { mode: 'cricket', players: legPlayers })
+    startGame(
+      config.mode === 'x01'
+        ? { mode: 'x01', config: config.x01, players: legPlayers }
+        : { mode: 'cricket', config: config.cricket, players: legPlayers },
+    )
   }
 
   function handleAbandonTournament() {
@@ -282,6 +295,7 @@ function App() {
     lastPlayers,
     lastMode,
     lastX01Config,
+    lastCricketConfig,
     topBar,
     startGame,
     startTournament,

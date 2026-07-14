@@ -2,7 +2,8 @@ import { generateId } from '../../shared/id'
 import type { Player, Throw } from '../types'
 import { mostRecentTurn } from '../turnUtils'
 import {
-  CRICKET_NUMBERS,
+  standardCricketConfig,
+  type CricketConfig,
   type CricketMarks,
   type CricketNumber,
   type CricketPlayerState,
@@ -10,19 +11,20 @@ import {
   type CricketTurn,
 } from './cricketTypes'
 
-function emptyMarks(): CricketMarks {
-  return { 20: 0, 19: 0, 18: 0, 17: 0, 16: 0, 15: 0, 25: 0 }
+function emptyMarks(numbers: CricketNumber[]): CricketMarks {
+  return Object.fromEntries(numbers.map((number) => [number, 0]))
 }
 
-export function createCricketGame(players: Player[]): CricketState {
+export function createCricketGame(players: Player[], config: CricketConfig = standardCricketConfig()): CricketState {
   const playerStates: CricketPlayerState[] = players.map((player) => ({
     playerId: player.id,
-    marks: emptyMarks(),
+    marks: emptyMarks(config.numbers),
     points: 0,
     turns: [],
   }))
 
   return {
+    config,
     playerStates,
     currentPlayerIndex: 0,
     currentTurnThrows: [],
@@ -38,10 +40,10 @@ export type ThrowInput = Omit<Throw, 'id' | 'timestamp'>
  * a miss) is a no-op that still consumes a dart of the turn. The bull marks
  * like a "double": outer bull is 1 mark, bullseye is 2.
  */
-function cricketHit(dart: ThrowInput): { number: CricketNumber; marks: number } | null {
-  if (dart.ring === 'bullseye') return { number: 25, marks: 2 }
-  if (dart.ring === 'outerBull') return { number: 25, marks: 1 }
-  if (dart.segment === null || dart.segment < 15 || dart.segment > 20) return null
+function cricketHit(dart: ThrowInput, numbers: CricketNumber[]): { number: CricketNumber; marks: number } | null {
+  if (dart.ring === 'bullseye') return numbers.includes(25) ? { number: 25, marks: 2 } : null
+  if (dart.ring === 'outerBull') return numbers.includes(25) ? { number: 25, marks: 1 } : null
+  if (dart.segment === null || !numbers.includes(dart.segment)) return null
 
   const number = dart.segment as CricketNumber
   if (dart.ring === 'treble') return { number, marks: 3 }
@@ -54,8 +56,8 @@ function isDeadForOthers(playerStates: CricketPlayerState[], forPlayerIndex: num
   return playerStates.every((ps, i) => i === forPlayerIndex || ps.marks[number] === 3)
 }
 
-function isAllClosed(marks: CricketMarks): boolean {
-  return CRICKET_NUMBERS.every((n) => marks[n] === 3)
+function isAllClosed(marks: CricketMarks, numbers: CricketNumber[]): boolean {
+  return numbers.every((n) => marks[n] === 3)
 }
 
 /**
@@ -72,12 +74,13 @@ function foldCricketThrows(
   throws: Throw[],
   playerStates: CricketPlayerState[],
   playerIndex: number,
+  numbers: CricketNumber[],
 ): { marks: CricketMarks; points: number } {
   let marks = marksBefore
   let points = pointsBefore
 
   for (const dart of throws) {
-    const hit = cricketHit(dart)
+    const hit = cricketHit(dart, numbers)
     if (!hit) continue
 
     const currentCount = marks[hit.number]
@@ -113,10 +116,17 @@ export function applyThrow(state: CricketState, throwInput: ThrowInput): Cricket
 
   const marksBefore = currentPlayerState.marks
   const pointsBefore = currentPlayerState.points
-  const { marks, points } = foldCricketThrows(marksBefore, pointsBefore, turnThrows, state.playerStates, playerIndex)
+  const { marks, points } = foldCricketThrows(
+    marksBefore,
+    pointsBefore,
+    turnThrows,
+    state.playerStates,
+    playerIndex,
+    state.config.numbers,
+  )
 
   const opponentsPoints = state.playerStates.filter((_, i) => i !== playerIndex).map((ps) => ps.points)
-  const win = isAllClosed(marks) && points >= Math.max(0, ...opponentsPoints)
+  const win = isAllClosed(marks, state.config.numbers) && points >= Math.max(0, ...opponentsPoints)
   const turnComplete = win || turnThrows.length === 3
 
   if (!turnComplete) {
@@ -198,6 +208,7 @@ export function liveMarksAndPoints(state: CricketState): { marks: CricketMarks; 
     state.currentTurnThrows,
     state.playerStates,
     state.currentPlayerIndex,
+    state.config.numbers,
   )
 }
 

@@ -1,4 +1,3 @@
-import { CRICKET_NUMBERS } from '../game/cricket/cricketTypes'
 import type { GameState } from '../game/types'
 import type { CricketPlayerGameSummary, GameSummary } from './types'
 
@@ -10,10 +9,10 @@ export function buildCricketGameSummary(
     const playerState = game.cricket.playerStates.find((ps) => ps.playerId === player.id)!
     const won = player.id === game.cricket.winnerId
     const turnMarks = playerState.turns.map((turn) =>
-      CRICKET_NUMBERS.reduce((sum, n) => sum + (turn.marksAfter[n] - turn.marksBefore[n]), 0),
+      game.cricket.config.numbers.reduce((sum, n) => sum + (turn.marksAfter[n] - turn.marksBefore[n]), 0),
     )
     const turnPoints = playerState.turns.map((turn) => turn.pointsAfter - turn.pointsBefore)
-    const numbersClosed = CRICKET_NUMBERS.filter((n) => playerState.marks[n] === 3).length
+    const numbersClosed = game.cricket.config.numbers.filter((n) => playerState.marks[n] === 3).length
 
     return {
       playerId: player.id,

@@ -1,4 +1,5 @@
 import type { Player } from '../game/types'
+import type { CricketConfig } from '../game/cricket/cricketTypes'
 import type { X01Config } from '../game/x01/x01Types'
 
 export interface MatchupSlot {
@@ -25,7 +26,7 @@ export interface Matchup {
 /** `legsToWin`: legs needed to win a matchup, e.g. best-of-3 -> 2. */
 export type TournamentModeConfig =
   | { mode: 'x01'; x01: X01Config; legsToWin: number }
-  | { mode: 'cricket'; legsToWin: number }
+  | { mode: 'cricket'; cricket: CricketConfig; legsToWin: number }
 
 /** `matchesPerPair` only applies to round_robin: 1 = each pair meets once, 2 = twice. */
 export type TournamentFormatConfig = { format: 'knockout' } | { format: 'round_robin'; matchesPerPair: 1 | 2 }

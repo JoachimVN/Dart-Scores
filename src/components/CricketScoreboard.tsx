@@ -1,4 +1,4 @@
-import { CRICKET_NUMBERS, type CricketMarks } from '../game/cricket/cricketTypes'
+import type { CricketMarks, CricketNumber } from '../game/cricket/cricketTypes'
 import { Panel } from './ui/Panel'
 
 export interface CricketScoreboardEntry {
@@ -11,6 +11,7 @@ export interface CricketScoreboardEntry {
 interface CricketScoreboardProps {
   readonly players: CricketScoreboardEntry[]
   readonly currentPlayerId: string
+  readonly numbers: CricketNumber[]
 }
 
 const NUMBER_LABELS: Record<number, string> = { 25: 'Bull' }
@@ -23,7 +24,7 @@ function markSymbol(count: number): string {
   return '-'
 }
 
-export function CricketScoreboard({ players, currentPlayerId }: CricketScoreboardProps) {
+export function CricketScoreboard({ players, currentPlayerId, numbers }: CricketScoreboardProps) {
   return (
     <Panel title="Cricket">
       <table className="w-full border-collapse text-sm">
@@ -45,7 +46,7 @@ export function CricketScoreboard({ players, currentPlayerId }: CricketScoreboar
           </tr>
         </thead>
         <tbody>
-          {CRICKET_NUMBERS.map((number) => (
+          {numbers.map((number) => (
             <tr key={number} className="border-t border-line">
               <td className="p-1 text-xs font-semibold text-ink-muted tabular-nums">{NUMBER_LABELS[number] ?? number}</td>
               {players.map((player) => (

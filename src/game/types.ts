@@ -1,5 +1,5 @@
 import type { Ring } from '../dartboard/dartboard.types'
-import type { CricketState } from './cricket/cricketTypes'
+import type { CricketConfig, CricketState } from './cricket/cricketTypes'
 import type { X01Config, X01State } from './x01/x01Types'
 
 export interface Throw {
@@ -41,5 +41,7 @@ export type GameState =
   | (GameBase & { mode: 'x01'; x01: X01State })
   | (GameBase & { mode: 'cricket'; cricket: CricketState })
 
-/** Params needed to start a fresh game, one variant per mode - Cricket has no per-game config. */
-export type NewGameParams = { mode: 'x01'; config: X01Config; players: Player[] } | { mode: 'cricket'; players: Player[] }
+/** Params needed to start a fresh game, one variant per mode. */
+export type NewGameParams =
+  | { mode: 'x01'; config: X01Config; players: Player[] }
+  | { mode: 'cricket'; config: CricketConfig; players: Player[] }
