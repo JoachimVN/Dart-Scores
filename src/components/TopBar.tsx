@@ -11,9 +11,11 @@ interface TopBarProps {
   onSettingsChange: (patch: Partial<Settings>) => void
   onOpenStats: () => void
   onResetAllData: () => void
+  /** Active play uses only the Settings control, without the app header. */
+  compact?: boolean
 }
 
-export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onResetAllData }: Readonly<TopBarProps>) {
+export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onResetAllData, compact = false }: Readonly<TopBarProps>) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const { canInstall, promptInstall } = useInstallPrompt()
@@ -36,29 +38,46 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onR
   }, [settingsOpen])
 
   return (
-    <div className="mb-6 flex items-center justify-between border-b border-line pb-3">
-      <div className="flex items-baseline gap-2.5">
-        <span className="text-lg font-bold tracking-tight">Dart Scores</span>
-        <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
-          {modeLabel ?? 'X01'}
-        </span>
-      </div>
+    <div
+      className={
+        compact
+          ? 'fixed top-4 right-4 z-30 flex justify-end'
+          : 'mb-6 flex items-center justify-between border-b border-line pb-3'
+      }
+    >
+      {!compact && (
+        <div className="flex items-baseline gap-2.5">
+          <span className="text-lg font-bold tracking-tight">Dart Scores</span>
+          <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+            {modeLabel ?? 'X01'}
+          </span>
+        </div>
+      )}
 
       <div className="relative flex gap-2" ref={panelRef}>
-        {canInstall && (
+        {!compact && canInstall && (
           <Button variant="ghost" size="sm" onClick={promptInstall}>
             Install
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={onOpenStats}>
-          Stats
-        </Button>
+        {!compact && (
+          <Button variant="ghost" size="sm" onClick={onOpenStats}>
+            Stats
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => setSettingsOpen((open) => !open)}>
           Settings
         </Button>
 
         {settingsOpen && (
           <div className="absolute top-full right-0 z-10 mt-2 flex w-64 flex-col gap-4 rounded-(--radius-lg) border border-line bg-card p-4 shadow-lg">
+            <div>
+              <h2 className="m-0 text-sm font-semibold">Display settings</h2>
+              <p className="mt-1 mb-0 text-xs leading-relaxed text-ink-muted">
+                Changes apply immediately. Game rules and Cricket targets are chosen before a game starts.
+              </p>
+            </div>
+
             <label className="flex flex-col gap-1.5 text-sm font-medium">
               <span>Theme</span>
               <select

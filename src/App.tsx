@@ -42,7 +42,7 @@ interface MainContentArgs {
   readonly lastMode: GameMode
   readonly lastX01Config: X01Config
   readonly lastCricketConfig: CricketConfig
-  readonly topBar: (modeLabel: string) => ReactNode
+  readonly topBar: (modeLabel: string, compact?: boolean) => ReactNode
   readonly startGame: ReturnType<typeof useGame>['startGame']
   readonly startTournament: ReturnType<typeof useTournament>['startTournament']
   readonly onThrow: ReturnType<typeof useGame>['throwDart']
@@ -103,7 +103,7 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
     if (!legMatchup) return null
     return (
       <>
-        {topBar('Tournament')}
+        {topBar('Tournament', true)}
         <TournamentLegCompleteScreen
           game={game}
           matchup={legMatchup}
@@ -117,17 +117,20 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
 
   if (game) {
     return (
-      <PlayScreen
-        game={game}
-        onThrow={args.onThrow}
-        onUndo={args.onUndo}
-        onRedo={args.onRedo}
-        canRedo={args.canRedo}
-        onNewGame={args.onNewGame}
-        onRestart={args.onRematch}
-        useDartNotation={settings.useDartNotation}
-        showCheckoutSuggestions={settings.showCheckoutSuggestions}
-      />
+      <>
+        {topBar('Tournament', true)}
+        <PlayScreen
+          game={game}
+          onThrow={args.onThrow}
+          onUndo={args.onUndo}
+          onRedo={args.onRedo}
+          canRedo={args.canRedo}
+          onNewGame={args.onNewGame}
+          onRestart={args.onRematch}
+          useDartNotation={settings.useDartNotation}
+          showCheckoutSuggestions={settings.showCheckoutSuggestions}
+        />
+      </>
     )
   }
 
@@ -190,17 +193,20 @@ function renderCasualContent(args: MainContentArgs): ReactNode {
   }
 
   return (
-    <PlayScreen
-      game={game}
-      onThrow={args.onThrow}
-      onUndo={args.onUndo}
-      onRedo={args.onRedo}
-      canRedo={args.canRedo}
-      onNewGame={args.onNewGame}
-      onRestart={args.onRematch}
-      useDartNotation={settings.useDartNotation}
-      showCheckoutSuggestions={settings.showCheckoutSuggestions}
-    />
+    <>
+      {topBar(game.mode === 'x01' ? 'X01' : 'Cricket', true)}
+      <PlayScreen
+        game={game}
+        onThrow={args.onThrow}
+        onUndo={args.onUndo}
+        onRedo={args.onRedo}
+        canRedo={args.canRedo}
+        onNewGame={args.onNewGame}
+        onRestart={args.onRematch}
+        useDartNotation={settings.useDartNotation}
+        showCheckoutSuggestions={settings.showCheckoutSuggestions}
+      />
+    </>
   )
 }
 
@@ -276,9 +282,10 @@ function App() {
     updateSettings(patch)
   }
 
-  const topBar = (modeLabel: string) => (
+  const topBar = (modeLabel: string, compact = false) => (
     <TopBar
       modeLabel={modeLabel}
+      compact={compact}
       settings={settings}
       onSettingsChange={handleSettingsChange}
       onOpenStats={() => setView('stats')}
