@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { Button } from '../components/ui/Button'
 import { Panel } from '../components/ui/Panel'
 import type { Matchup, Tournament } from '../tournament/tournamentTypes'
@@ -31,7 +31,7 @@ function BracketMatch({ matchup, currentMatchup, playerName, onPlay }: BracketMa
   const bestOf = matchup.legsToWin * 2 - 1
 
   return (
-    <Panel className={'bracket-match ' + (isCurrent ? 'bracket-match-current' : '')}>
+    <Panel data-matchup-id={matchup.id} className={'bracket-match ' + (isCurrent ? 'bracket-match-current' : '')}>
       <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
         {matchup.players.map((slot, index) => (
           <li
@@ -94,6 +94,44 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
   const rightColumns = nonFinalRounds
     .map((round, roundIndex) => ({ roundIndex, matchups: round.slice(round.length / 2).toReversed() }))
     .toReversed()
+  const bracketRef = useRef<HTMLDivElement>(null)
+  const [connectorPaths, setConnectorPaths] = useState<string[]>([])
+
+  useLayoutEffect(() => {
+    const bracket = bracketRef.current
+    if (!bracket) return
+
+    function measureConnectors() {
+      const element = bracketRef.current
+      if (!element) return
+      const bracketRect = element.getBoundingClientRect()
+      const paths: string[] = []
+      for (const round of tournament.rounds.slice(0, -1)) {
+        for (const source of round) {
+          const target = tournament.rounds[source.round + 1]?.[Math.floor(source.slotIndex / 2)]
+          const sourceElement = element.querySelector<HTMLElement>(`[data-matchup-id="${source.id}"]`)
+          const targetElement = target && element.querySelector<HTMLElement>(`[data-matchup-id="${target.id}"]`)
+          if (!sourceElement || !targetElement) continue
+
+          const from = sourceElement.getBoundingClientRect()
+          const to = targetElement.getBoundingClientRect()
+          const sourceIsLeftOfTarget = from.left < to.left
+          const fromX = (sourceIsLeftOfTarget ? from.right : from.left) - bracketRect.left
+          const toX = (sourceIsLeftOfTarget ? to.left : to.right) - bracketRect.left
+          const fromY = from.top + from.height / 2 - bracketRect.top
+          const toY = to.top + to.height / 2 - bracketRect.top
+          const elbowX = (fromX + toX) / 2
+          paths.push(`M ${fromX} ${fromY} H ${elbowX} V ${toY} H ${toX}`)
+        }
+      }
+      setConnectorPaths(paths)
+    }
+
+    const observer = new ResizeObserver(measureConnectors)
+    observer.observe(bracket)
+    measureConnectors()
+    return () => observer.disconnect()
+  }, [tournament, matchup])
 
   function handleAbandon() {
     if (globalThis.confirm('Abandon this tournament? Current progress will be lost.')) {
@@ -114,7 +152,12 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
       </div>
 
       <div className="bracket-scroll">
-        <div className="knockout-bracket" style={{ '--bracket-rounds': totalRounds } as CSSProperties}>
+        <div ref={bracketRef} className="knockout-bracket" style={{ '--bracket-rounds': totalRounds } as CSSProperties}>
+          <svg className="bracket-connectors" viewBox={`0 0 ${bracketRef.current?.clientWidth ?? 0} ${bracketRef.current?.clientHeight ?? 0}`} aria-hidden="true">
+            {connectorPaths.map((path, index) => (
+              <path key={index} d={path} />
+            ))}
+          </svg>
           <div className="bracket-side bracket-side-left">
             {leftColumns.map(({ roundIndex, matchups }) => (
               <BracketColumn

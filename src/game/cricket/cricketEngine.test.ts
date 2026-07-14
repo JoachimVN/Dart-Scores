@@ -58,8 +58,8 @@ describe('createCricketGame', () => {
   })
 
   it('initializes only the configured targets', () => {
-    const state = createCricketGame(players, { numbers: [14, 13, 25] })
-    expect(state.config.numbers).toEqual([14, 13, 25])
+    const state = createCricketGame(players, { targets: [14, 13, 25] })
+    expect(state.config.targets).toEqual([14, 13, 25])
     expect(state.playerStates[0].marks).toEqual({ 13: 0, 14: 0, 25: 0 })
   })
 })
@@ -150,11 +150,32 @@ describe('applyThrow', () => {
   })
 
   it('uses the selected targets instead of the standard Cricket range', () => {
-    let state = createCricketGame(players, { numbers: [14] })
+    let state = createCricketGame(players, { targets: [14] })
     state = applyThrow(state, treble(14))
     expect(liveMarksAndPoints(state).marks[14]).toBe(3)
     state = applyThrow(state, treble(20))
     expect(liveMarksAndPoints(state).marks[14]).toBe(3)
+  })
+
+  it('lets any double close the shared Double target, then scores the dart value', () => {
+    let state = createCricketGame(players, { targets: ['double', 1] })
+    state = applyThrow(state, { ...double(1), cricketTarget: 'double' })
+    state = applyThrow(state, double(10))
+    state = applyThrow(state, double(20)) // closes Double
+    expect(state.playerStates[0].marks.double).toBe(3)
+    state = applyThrow(state, miss())
+    state = applyThrow(state, miss())
+    state = applyThrow(state, miss()) // p2 passes
+    state = applyThrow(state, { ...double(15), value: 30 })
+    expect(liveMarksAndPoints(state).points).toBe(30)
+  })
+
+  it('uses the player-selected target when a double also matches its number', () => {
+    let state = createCricketGame(players, { targets: [15, 'double'] })
+    state = applyThrow(state, { ...double(15), cricketTarget: 'double' })
+    expect(liveMarksAndPoints(state).marks).toMatchObject({ 15: 0, double: 1 })
+    state = applyThrow(state, { ...double(15), cricketTarget: 15 })
+    expect(liveMarksAndPoints(state).marks).toMatchObject({ 15: 2, double: 1 })
   })
 
   it('wins mid-turn (before the 3rd dart) when closing the last number with points already tied', () => {

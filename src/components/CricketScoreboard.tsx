@@ -1,4 +1,4 @@
-import type { CricketMarks, CricketNumber } from '../game/cricket/cricketTypes'
+import { cricketTargetLabel, type CricketMarks, type CricketTarget } from '../game/cricket/cricketTypes'
 import { Panel } from './ui/Panel'
 
 export interface CricketScoreboardEntry {
@@ -11,10 +11,8 @@ export interface CricketScoreboardEntry {
 interface CricketScoreboardProps {
   readonly players: CricketScoreboardEntry[]
   readonly currentPlayerId: string
-  readonly numbers: CricketNumber[]
+  readonly targets: CricketTarget[]
 }
-
-const NUMBER_LABELS: Record<number, string> = { 25: 'Bull' }
 
 /** Standard cricket mark notation: dash, slash, X, circled X (closed). */
 function markSymbol(count: number): string {
@@ -24,7 +22,7 @@ function markSymbol(count: number): string {
   return '-'
 }
 
-export function CricketScoreboard({ players, currentPlayerId, numbers }: CricketScoreboardProps) {
+export function CricketScoreboard({ players, currentPlayerId, targets }: CricketScoreboardProps) {
   return (
     <Panel title="Cricket">
       <table className="w-full border-collapse text-sm">
@@ -46,12 +44,12 @@ export function CricketScoreboard({ players, currentPlayerId, numbers }: Cricket
           </tr>
         </thead>
         <tbody>
-          {numbers.map((number) => (
-            <tr key={number} className="border-t border-line">
-              <td className="p-1 text-xs font-semibold text-ink-muted tabular-nums">{NUMBER_LABELS[number] ?? number}</td>
+          {targets.map((target) => (
+            <tr key={target} className="border-t border-line">
+              <td className="p-1 text-xs font-semibold text-ink-muted tabular-nums">{cricketTargetLabel(target)}</td>
               {players.map((player) => (
                 <td key={player.id} className="p-1 text-center font-bold tabular-nums">
-                  {markSymbol(player.marks[number])}
+                  {markSymbol(player.marks[target])}
                 </td>
               ))}
             </tr>

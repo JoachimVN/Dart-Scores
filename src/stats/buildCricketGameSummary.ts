@@ -8,11 +8,14 @@ export function buildCricketGameSummary(
   const players: CricketPlayerGameSummary[] = game.players.map((player) => {
     const playerState = game.cricket.playerStates.find((ps) => ps.playerId === player.id)!
     const won = player.id === game.cricket.winnerId
-    const turnMarks = playerState.turns.map((turn) =>
-      game.cricket.config.numbers.reduce((sum, n) => sum + (turn.marksAfter[n] - turn.marksBefore[n]), 0),
+    const turnMarks: number[] = playerState.turns.map((turn) =>
+      game.cricket.config.targets.reduce<number>(
+        (sum, target) => sum + (turn.marksAfter[target] - turn.marksBefore[target]),
+        0,
+      ),
     )
     const turnPoints = playerState.turns.map((turn) => turn.pointsAfter - turn.pointsBefore)
-    const numbersClosed = game.cricket.config.numbers.filter((n) => playerState.marks[n] === 3).length
+    const numbersClosed = game.cricket.config.targets.filter((target) => playerState.marks[target] === 3).length
 
     return {
       playerId: player.id,
@@ -21,7 +24,7 @@ export function buildCricketGameSummary(
       turnsPlayed: playerState.turns.length,
       throws: playerState.turns.flatMap((turn) => turn.throws),
       pointsScored: playerState.points,
-      marksScored: turnMarks.reduce((sum, marks) => sum + marks, 0),
+      marksScored: turnMarks.reduce<number>((sum, marks) => sum + marks, 0),
       numbersClosed,
       turnMarks,
       turnPoints,

@@ -40,7 +40,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length < 2) return
+    if (players.length < 2 || (mode === 'cricket' && cricketConfig.targets.length === 0)) return
     const legsToWin = Math.ceil(bestOf / 2)
     const modeConfig = mode === 'x01' ? { mode, x01: { startingScore, doubleOut }, legsToWin } : { mode, cricket: cricketConfig, legsToWin }
     const formatConfig = format === 'round_robin' ? { format, matchesPerPair } : { format }
@@ -153,7 +153,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
         )}
 
         {mode === 'cricket' && (
-          <CricketNumberPicker numbers={cricketConfig.numbers} onChange={(numbers) => setCricketConfig({ numbers })} />
+          <CricketNumberPicker targets={cricketConfig.targets} onChange={(targets) => setCricketConfig({ targets })} />
         )}
 
         <fieldset className="m-0 border-none p-0">
@@ -188,7 +188,13 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
           </label>
         )}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length < 2}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          disabled={players.length < 2 || (mode === 'cricket' && cricketConfig.targets.length === 0)}
+        >
           Start Tournament
         </Button>
       </Panel>

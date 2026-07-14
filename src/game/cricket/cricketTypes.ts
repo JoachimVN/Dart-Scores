@@ -5,16 +5,25 @@ export const STANDARD_CRICKET_NUMBERS = [20, 19, 18, 17, 16, 15, 25] as const
 /** Kept as an alias while callers move to the game-specific config. */
 export const CRICKET_NUMBERS = STANDARD_CRICKET_NUMBERS
 export type CricketNumber = number
+export type CricketMultiplierTarget = 'double' | 'triple'
+export type CricketTarget = CricketNumber | CricketMultiplierTarget
 
 export interface CricketConfig {
-  /** Selected board segments, in scoreboard order. 25 represents the bull. */
-  numbers: CricketNumber[]
+  /** Selected board targets, in scoreboard order. 25 represents the bull. */
+  targets: CricketTarget[]
 }
 
-export const standardCricketConfig = (): CricketConfig => ({ numbers: [...STANDARD_CRICKET_NUMBERS] })
+export const standardCricketConfig = (): CricketConfig => ({ targets: [...STANDARD_CRICKET_NUMBERS] })
+
+export function cricketTargetLabel(target: CricketTarget): string {
+  if (target === 25) return 'Bull'
+  if (target === 'double') return 'Double'
+  if (target === 'triple') return 'Triple'
+  return String(target)
+}
 
 /** Marks on each cricket number, 0-3 (3 = closed). */
-export type CricketMarks = Record<number, number>
+export type CricketMarks = Record<CricketTarget, number>
 
 /** Cricket's own turn record - marks/points snapshots, not a single countdown score like X01's Turn. */
 export interface CricketTurn {

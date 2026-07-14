@@ -134,4 +134,37 @@ export const migrations: Migration[] = [
       return { ...root, activeGame, activeTournament }
     },
   },
+  {
+    from: 10,
+    to: 11,
+    migrate: (data) => {
+      // v10 made the standard numbers explicit. v11 generalizes that list to
+      // targets so the optional Double/Triple rings can be stored alongside it.
+      const root = data as {
+        activeGame?: { mode?: string; cricket?: { config?: { numbers?: unknown[] } } } | null
+        activeTournament?: { config?: { mode?: string; cricket?: { numbers?: unknown[] } } } | null
+      }
+      const activeGame =
+        root.activeGame?.mode === 'cricket' && root.activeGame.cricket?.config
+          ? {
+              ...root.activeGame,
+              cricket: {
+                ...root.activeGame.cricket,
+                config: { targets: root.activeGame.cricket.config.numbers ?? standardCricketConfig().targets },
+              },
+            }
+          : root.activeGame
+      const activeTournament =
+        root.activeTournament?.config?.mode === 'cricket' && root.activeTournament.config.cricket
+          ? {
+              ...root.activeTournament,
+              config: {
+                ...root.activeTournament.config,
+                cricket: { targets: root.activeTournament.config.cricket.numbers ?? standardCricketConfig().targets },
+              },
+            }
+          : root.activeTournament
+      return { ...root, activeGame, activeTournament }
+    },
+  },
 ]

@@ -39,7 +39,7 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
-    if (players.length === 0) return
+    if (players.length === 0 || (mode === 'cricket' && cricketConfig.targets.length === 0)) return
     onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, config: cricketConfig, players })
   }
 
@@ -136,12 +136,18 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
           </>
         ) : (
           <CricketNumberPicker
-            numbers={cricketConfig.numbers}
-            onChange={(numbers) => setCricketConfig({ numbers })}
+            targets={cricketConfig.targets}
+            onChange={(targets) => setCricketConfig({ targets })}
           />
         )}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={players.length === 0}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          disabled={players.length === 0 || (mode === 'cricket' && cricketConfig.targets.length === 0)}
+        >
           Start Game
         </Button>
       </Panel>

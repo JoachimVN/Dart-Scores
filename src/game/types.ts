@@ -1,5 +1,5 @@
 import type { Ring } from '../dartboard/dartboard.types'
-import type { CricketConfig, CricketState } from './cricket/cricketTypes'
+import type { CricketConfig, CricketState, CricketTarget } from './cricket/cricketTypes'
 import type { X01Config, X01State } from './x01/x01Types'
 
 export interface Throw {
@@ -9,6 +9,8 @@ export interface Throw {
   value: number
   label: string
   timestamp: number
+  /** The Cricket target selected for this dart when more than one applies. */
+  cricketTarget?: CricketTarget
 }
 
 /** X01-only turn record - a countdown score before/after. Cricket has its own CricketTurn shape (marks/points, no single score). */
