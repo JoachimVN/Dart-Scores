@@ -316,7 +316,12 @@ export function PlayScreen({
   )
 
   const targetChooser = pendingCricketThrow && (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label="Choose Cricket target">
+    <dialog
+      open
+      className="fixed inset-0 z-20 m-0 flex max-h-none max-w-none items-center justify-center border-0 bg-black/45 p-4"
+      aria-modal="true"
+      aria-label="Choose Cricket target"
+    >
       <Panel className="w-full max-w-sm shadow-xl">
         <h2 className="m-0 text-lg font-bold">Choose target</h2>
         <p className="mt-1 mb-4 text-sm text-ink-muted">This dart matches more than one Cricket target.</p>
@@ -328,7 +333,7 @@ export function PlayScreen({
           ))}
         </div>
       </Panel>
-    </div>
+    </dialog>
   )
 
   if (!isWide) {

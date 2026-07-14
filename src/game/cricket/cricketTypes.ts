@@ -4,9 +4,8 @@ import type { Throw } from '../types'
 export const STANDARD_CRICKET_NUMBERS = [20, 19, 18, 17, 16, 15, 25] as const
 /** Kept as an alias while callers move to the game-specific config. */
 export const CRICKET_NUMBERS = STANDARD_CRICKET_NUMBERS
-export type CricketNumber = number
 export type CricketMultiplierTarget = 'double' | 'triple'
-export type CricketTarget = CricketNumber | CricketMultiplierTarget
+export type CricketTarget = number | CricketMultiplierTarget
 
 export interface CricketConfig {
   /** Selected board targets, in scoreboard order. 25 represents the bull. */

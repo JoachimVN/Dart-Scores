@@ -95,7 +95,7 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
     .map((round, roundIndex) => ({ roundIndex, matchups: round.slice(round.length / 2).toReversed() }))
     .toReversed()
   const bracketRef = useRef<HTMLDivElement>(null)
-  const [connectorPaths, setConnectorPaths] = useState<string[]>([])
+  const [connectorPaths, setConnectorPaths] = useState<{ id: string; d: string }[]>([])
 
   useLayoutEffect(() => {
     const bracket = bracketRef.current
@@ -105,7 +105,7 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
       const element = bracketRef.current
       if (!element) return
       const bracketRect = element.getBoundingClientRect()
-      const paths: string[] = []
+      const paths: { id: string; d: string }[] = []
       for (const round of tournament.rounds.slice(0, -1)) {
         for (const source of round) {
           const target = tournament.rounds[source.round + 1]?.[Math.floor(source.slotIndex / 2)]
@@ -121,7 +121,7 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
           const fromY = from.top + from.height / 2 - bracketRect.top
           const toY = to.top + to.height / 2 - bracketRect.top
           const elbowX = (fromX + toX) / 2
-          paths.push(`M ${fromX} ${fromY} H ${elbowX} V ${toY} H ${toX}`)
+          paths.push({ id: source.id, d: `M ${fromX} ${fromY} H ${elbowX} V ${toY} H ${toX}` })
         }
       }
       setConnectorPaths(paths)
@@ -154,8 +154,8 @@ export function TournamentBracketScreen({ tournament, matchup, onPlayNextLeg, on
       <div className="bracket-scroll">
         <div ref={bracketRef} className="knockout-bracket" style={{ '--bracket-rounds': totalRounds } as CSSProperties}>
           <svg className="bracket-connectors" viewBox={`0 0 ${bracketRef.current?.clientWidth ?? 0} ${bracketRef.current?.clientHeight ?? 0}`} aria-hidden="true">
-            {connectorPaths.map((path, index) => (
-              <path key={index} d={path} />
+            {connectorPaths.map((connector) => (
+              <path key={connector.id} d={connector.d} />
             ))}
           </svg>
           <div className="bracket-side bracket-side-left">

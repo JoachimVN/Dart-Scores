@@ -1,6 +1,6 @@
-import { cricketTargetLabel, type CricketNumber, type CricketTarget } from '../game/cricket/cricketTypes'
+import { cricketTargetLabel, type CricketTarget } from '../game/cricket/cricketTypes'
 
-const AVAILABLE_NUMBERS: CricketNumber[] = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 25]
+const AVAILABLE_NUMBERS: number[] = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 25]
 const MULTIPLIER_TARGETS: CricketTarget[] = ['double', 'triple']
 
 interface CricketNumberPickerProps {
@@ -19,7 +19,9 @@ export function CricketNumberPicker({ targets, onChange }: CricketNumberPickerPr
       [...targets, target].sort((a, b) => {
         if (typeof a === 'string') return 1
         if (typeof b === 'string') return -1
-        return a === 25 ? 1 : b === 25 ? -1 : b - a
+        if (a === 25) return 1
+        if (b === 25) return -1
+        return b - a
       }),
     )
   }
