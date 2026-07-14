@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import type { GameMode, Player } from '../game/types'
 import { standardCricketConfig, type CricketConfig } from '../game/cricket/cricketTypes'
 import { useRosterSelection } from '../players/useRosterSelection'
@@ -15,9 +15,12 @@ type TournamentFormat = TournamentConfig['format']
 
 interface TournamentSetupScreenProps {
   readonly onStart: (players: Player[], config: TournamentConfig) => void
+  readonly initialPlayers?: Player[]
+  /** Keeps the setup selection shared with the casual tab and return flows. */
+  readonly onPlayersChange?: (players: Player[]) => void
 }
 
-export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
+export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange }: TournamentSetupScreenProps) {
   const {
     availableUsers,
     players,
@@ -28,7 +31,7 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
     renameUser,
     addToGame,
     removeFromGame,
-  } = useRosterSelection()
+  } = useRosterSelection(initialPlayers)
 
   const [mode, setMode] = useState<GameMode>('x01')
   const [startingScore, setStartingScore] = useState<301 | 501>(501)
@@ -37,6 +40,10 @@ export function TournamentSetupScreen({ onStart }: TournamentSetupScreenProps) {
   const [bestOf, setBestOf] = useState<(typeof BEST_OF_OPTIONS)[number]>(3)
   const [format, setFormat] = useState<TournamentFormat>('knockout')
   const [matchesPerPair, setMatchesPerPair] = useState<1 | 2>(1)
+
+  useEffect(() => {
+    onPlayersChange?.(players)
+  }, [onPlayersChange, players])
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()

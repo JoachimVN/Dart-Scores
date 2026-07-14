@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import type { NewGameParams, Player } from '../game/types'
 import type { X01Config } from '../game/x01/x01Types'
 import { standardCricketConfig, type CricketConfig } from '../game/cricket/cricketTypes'
@@ -17,9 +17,18 @@ interface SetupScreenProps {
   readonly initialMode?: NewGameParams['mode']
   readonly initialX01Config?: X01Config
   readonly initialCricketConfig?: CricketConfig
+  /** Keeps the setup selection shared with the tournament tab and return flows. */
+  readonly onPlayersChange?: (players: Player[]) => void
 }
 
-export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', initialX01Config, initialCricketConfig }: SetupScreenProps) {
+export function SetupScreen({
+  onStart,
+  initialPlayers,
+  initialMode = 'x01',
+  initialX01Config,
+  initialCricketConfig,
+  onPlayersChange,
+}: SetupScreenProps) {
   const {
     availableUsers,
     players,
@@ -36,6 +45,10 @@ export function SetupScreen({ onStart, initialPlayers, initialMode = 'x01', init
   const [startingScore, setStartingScore] = useState<301 | 501>((initialX01Config?.startingScore as 301 | 501) ?? 501)
   const [doubleOut, setDoubleOut] = useState(initialX01Config?.doubleOut ?? true)
   const [cricketConfig, setCricketConfig] = useState<CricketConfig>(initialCricketConfig ?? standardCricketConfig())
+
+  useEffect(() => {
+    onPlayersChange?.(players)
+  }, [onPlayersChange, players])
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault()
