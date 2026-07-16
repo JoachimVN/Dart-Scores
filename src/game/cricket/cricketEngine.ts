@@ -34,6 +34,15 @@ export function createCricketGame(players: Player[], config: CricketConfig = sta
 
 export type ThrowInput = Omit<Throw, 'id' | 'timestamp'>
 
+export interface ApplyThrowOptions {
+  /**
+   * When true, a finished 3-dart turn is held uncommitted in
+   * currentTurnThrows until endTurn confirms it, instead of auto-advancing
+   * to the next player. A win always commits immediately regardless.
+   */
+  manualTurnEnd?: boolean
+}
+
 /** Every configured target that this physical dart can satisfy. */
 export function cricketTargetOptions(dart: ThrowInput, targets: CricketTarget[]): CricketTarget[] {
   const options: CricketTarget[] = []
@@ -108,49 +117,41 @@ function foldCricketThrows(
   return { marks, points }
 }
 
-/**
- * Applies one dart throw to the current player's in-progress turn.
- *
- * Mirrors x01Engine.applyThrow's shape: darts accumulate uncommitted in
- * currentTurnThrows, and marks/points are recomputed fresh from the
- * committed state each dart (not mutated incrementally) - so nothing is
- * written until the turn ends. Cricket has no bust; a turn only ends on a
- * win or the 3rd dart.
- */
-export function applyThrow(state: CricketState, throwInput: ThrowInput): CricketState {
-  if (state.winnerId !== null) return state
+interface TurnOutcome {
+  marks: CricketMarks
+  points: number
+  win: boolean
+}
 
+/** Folds a turn's darts onto the current player's committed marks/points and checks the win condition. */
+function evaluateTurn(state: CricketState, turnThrows: Throw[]): TurnOutcome {
   const playerIndex = state.currentPlayerIndex
   const currentPlayerState = state.playerStates[playerIndex]
-  const dart: Throw = { id: generateId(), timestamp: Date.now(), ...throwInput }
-  const turnThrows = [...state.currentTurnThrows, dart]
-
-  const marksBefore = currentPlayerState.marks
-  const pointsBefore = currentPlayerState.points
   const { marks, points } = foldCricketThrows(
-    marksBefore,
-    pointsBefore,
+    currentPlayerState.marks,
+    currentPlayerState.points,
     turnThrows,
     state.playerStates,
     playerIndex,
     state.config.targets,
   )
-
   const opponentsPoints = state.playerStates.filter((_, i) => i !== playerIndex).map((ps) => ps.points)
   const win = isAllClosed(marks, state.config.targets) && points >= Math.max(0, ...opponentsPoints)
-  const turnComplete = win || turnThrows.length === 3
+  return { marks, points, win }
+}
 
-  if (!turnComplete) {
-    return { ...state, currentTurnThrows: turnThrows }
-  }
+/** Commits `turnThrows` as the current player's completed turn, then hands play to the next player (or declares the win). */
+function commitTurn(state: CricketState, turnThrows: Throw[], { marks, points, win }: TurnOutcome): CricketState {
+  const playerIndex = state.currentPlayerIndex
+  const currentPlayerState = state.playerStates[playerIndex]
 
   const committedTurn: CricketTurn = {
     id: generateId(),
     playerId: currentPlayerState.playerId,
     throws: turnThrows,
-    marksBefore,
+    marksBefore: currentPlayerState.marks,
     marksAfter: marks,
-    pointsBefore,
+    pointsBefore: currentPlayerState.points,
     pointsAfter: points,
   }
 
@@ -168,6 +169,53 @@ export function applyThrow(state: CricketState, throwInput: ThrowInput): Cricket
     currentPlayerIndex: (playerIndex + 1) % state.playerStates.length,
     currentTurnThrows: [],
   }
+}
+
+/**
+ * Applies one dart throw to the current player's in-progress turn.
+ *
+ * Mirrors x01Engine.applyThrow's shape: darts accumulate uncommitted in
+ * currentTurnThrows, and marks/points are recomputed fresh from the
+ * committed state each dart (not mutated incrementally) - so nothing is
+ * written until the turn ends. Cricket has no bust; a turn only ends on a
+ * win or the 3rd dart.
+ */
+export function applyThrow(state: CricketState, throwInput: ThrowInput, options: ApplyThrowOptions = {}): CricketState {
+  if (state.winnerId !== null) return state
+  // A held turn accepts no more darts - it must be confirmed via endTurn
+  // (or shrunk by undo) first, even if manual turn end was toggled off since.
+  if (isTurnPending(state)) return state
+
+  const dart: Throw = { id: generateId(), timestamp: Date.now(), ...throwInput }
+  const turnThrows = [...state.currentTurnThrows, dart]
+  const outcome = evaluateTurn(state, turnThrows)
+
+  const turnComplete = outcome.win || turnThrows.length === 3
+  if (!turnComplete) {
+    return { ...state, currentTurnThrows: turnThrows }
+  }
+
+  if (options.manualTurnEnd && !outcome.win) {
+    return { ...state, currentTurnThrows: turnThrows }
+  }
+
+  return commitTurn(state, turnThrows, outcome)
+}
+
+/**
+ * True when the in-progress turn has ended (3 darts) but hasn't been
+ * committed - only possible in manual turn-end mode, where applyThrow holds
+ * the finished turn for endTurn to confirm. Derived from the throws rather
+ * than stored, so toggling the setting mid-game can't strand a flag.
+ */
+export function isTurnPending(state: CricketState): boolean {
+  return state.currentTurnThrows.length === 3
+}
+
+/** Commits a held (pending) turn - see isTurnPending. No-op while the turn is still in progress. */
+export function endTurn(state: CricketState): CricketState {
+  if (!isTurnPending(state)) return state
+  return commitTurn(state, state.currentTurnThrows, evaluateTurn(state, state.currentTurnThrows))
 }
 
 /**

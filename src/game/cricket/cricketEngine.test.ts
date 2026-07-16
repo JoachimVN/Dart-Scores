@@ -3,6 +3,8 @@ import type { Player } from '../types'
 import {
   applyThrow,
   createCricketGame,
+  endTurn,
+  isTurnPending,
   lastThrow,
   liveMarksAndPoints,
   undoLastThrow,
@@ -332,5 +334,82 @@ describe('lastThrow', () => {
     state = applyThrow(state, treble(18)) // commits p1's turn, advances to p2
 
     expect(lastThrow(state)?.segment).toBe(18)
+  })
+})
+
+describe('manual turn end', () => {
+  const manual = { manualTurnEnd: true }
+
+  it('holds a finished 3-dart turn uncommitted instead of advancing', () => {
+    let state = createCricketGame(players)
+    state = applyThrow(state, treble(20), manual)
+    state = applyThrow(state, treble(19), manual)
+    expect(isTurnPending(state)).toBe(false)
+    state = applyThrow(state, treble(18), manual)
+
+    expect(isTurnPending(state)).toBe(true)
+    expect(state.currentTurnThrows).toHaveLength(3)
+    expect(state.playerStates[0].marks[20]).toBe(0) // not committed
+    expect(state.playerStates[0].turns).toHaveLength(0)
+    expect(state.currentPlayerIndex).toBe(0) // not advanced
+  })
+
+  it('ignores further throws while a turn is held', () => {
+    let state = createCricketGame(players)
+    state = applyThrow(state, treble(20), manual)
+    state = applyThrow(state, treble(19), manual)
+    state = applyThrow(state, treble(18), manual)
+    const held = state
+
+    // Even without the manual option (e.g. the setting was toggled off mid-hold).
+    expect(applyThrow(state, single(20), manual)).toEqual(held)
+    expect(applyThrow(state, single(20))).toEqual(held)
+  })
+
+  it('still commits a win immediately', () => {
+    let state = closeFirstSixNumbers(createCricketGame(players))
+    state = applyThrow(state, bullseye(), manual)
+    state = applyThrow(state, outerBull(), manual) // closes 25 -> win
+
+    expect(state.winnerId).toBe('p1')
+    expect(state.currentTurnThrows).toEqual([])
+    expect(isTurnPending(state)).toBe(false)
+  })
+
+  it('endTurn commits the held turn and advances to the next player', () => {
+    let state = createCricketGame(players)
+    state = applyThrow(state, treble(20), manual)
+    state = applyThrow(state, treble(19), manual)
+    state = applyThrow(state, treble(18), manual)
+
+    state = endTurn(state)
+
+    expect(state.playerStates[0].marks).toMatchObject({ 20: 3, 19: 3, 18: 3 })
+    expect(state.playerStates[0].turns).toHaveLength(1)
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.currentTurnThrows).toEqual([])
+    expect(isTurnPending(state)).toBe(false)
+  })
+
+  it('endTurn is a no-op while the turn is still in progress', () => {
+    let state = createCricketGame(players)
+    state = applyThrow(state, treble(20), manual)
+
+    expect(endTurn(state)).toEqual(state)
+  })
+
+  it('undo pops a dart from the held turn, reopening it for throws', () => {
+    let state = createCricketGame(players)
+    state = applyThrow(state, treble(20), manual)
+    state = applyThrow(state, treble(19), manual)
+    state = applyThrow(state, treble(18), manual)
+
+    state = undoLastThrow(state)
+
+    expect(isTurnPending(state)).toBe(false)
+    expect(state.currentTurnThrows).toHaveLength(2)
+    state = applyThrow(state, single(17), manual)
+    expect(state.currentTurnThrows).toHaveLength(3)
+    expect(isTurnPending(state)).toBe(true)
   })
 })
