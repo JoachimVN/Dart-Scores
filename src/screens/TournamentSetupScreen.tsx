@@ -66,6 +66,20 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
   function handleDragStart(event: DragEvent<HTMLLIElement>, id: string) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', id)
+    const dragImage = event.currentTarget.cloneNode(true) as HTMLElement
+    const { width, height } = event.currentTarget.getBoundingClientRect()
+    Object.assign(dragImage.style, {
+      position: 'fixed',
+      top: '-9999px',
+      left: '-9999px',
+      width: `${width}px`,
+      height: `${height}px`,
+      opacity: '0.6',
+      pointerEvents: 'none',
+    })
+    document.body.append(dragImage)
+    event.dataTransfer.setDragImage(dragImage, width / 2, height / 2)
+    setTimeout(() => dragImage.remove(), 0)
     dropTargetRef.current = null
     setDraggedId(id)
   }
@@ -110,15 +124,13 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
     const isAddingPlayer = !players.some((player) => player.id === draggedId)
 
     if (isAddingPlayer) {
-      if (rows.length > 1 && event.clientY < rows[0].getBoundingClientRect().top) {
-        handleDragOver(event, { list: 'players', beforeId: rows[0].dataset.rosterId })
-        return
-      }
-      for (let index = 0; index < rows.length - 1; index++) {
-        const current = rows[index].getBoundingClientRect()
-        const next = rows[index + 1].getBoundingClientRect()
-        if (event.clientY > current.bottom && event.clientY < next.top) {
-          handleDragOver(event, { list: 'players', beforeId: rows[index + 1].dataset.rosterId })
+      if (rows.length > 1) {
+        const beforeRow = rows.find((row) => {
+          const { top, height } = row.getBoundingClientRect()
+          return event.clientY < top + height / 2
+        })
+        if (beforeRow) {
+          handleDragOver(event, { list: 'players', beforeId: beforeRow.dataset.rosterId })
           return
         }
       }
