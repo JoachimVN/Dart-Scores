@@ -2,10 +2,9 @@
 // *real* X01 engine and tournament engine so every resulting GameState/Tournament is exactly as
 // valid as one played through the UI. Nothing here is simulated data-shape guessing - applyThrow
 // decides busts/wins/turn-completion itself, same as a live game.
-import type { Player, Throw } from '../src/game/types'
+import type { GameState, Player } from '../src/game/types'
 import { applyThrow, createX01Game, type ThrowInput } from '../src/game/x01/x01Engine'
 import type { X01Config } from '../src/game/x01/x01Types'
-import type { GameState } from '../src/game/types'
 import { buildX01GameSummary } from '../src/stats/buildX01GameSummary'
 import type { GameSummary } from '../src/stats/types'
 import { createTournament, recordLegResult } from '../src/tournament/tournamentEngine'
@@ -146,4 +145,4 @@ export function tournamentPersistedRoot(now: number): PersistedRoot {
   }
 }
 
-export type { Throw }
+export type { Throw } from '../src/game/types'
