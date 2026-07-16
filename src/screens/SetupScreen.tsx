@@ -141,16 +141,24 @@ export function SetupScreen({
       onSubmit={handleSubmit}
       className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6"
     >
-      <Panel
-        title="Users"
-        className={
-          'flex min-h-0 min-w-0 flex-col transition-colors ' +
-          (dropTarget?.list === 'users' ? 'border-accent/60 bg-accent-soft/40' : '')
-        }
-        onDragOver={(event) => handleDragOver(event, { list: 'users' })}
-        onDragLeave={handleDragLeave}
-        onDrop={(event) => handleDrop(event, { list: 'users' })}
-      >
+      <div className="relative h-full">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-32 z-10 h-32"
+          onDragOver={(event) => handleDragOver(event, { list: 'users' })}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'users' })}
+        />
+        <Panel
+          title="Users"
+          className={
+            'flex h-full min-h-0 min-w-0 flex-col transition-colors ' +
+            (dropTarget?.list === 'users' ? 'border-accent/60 bg-accent-soft/40' : '')
+          }
+          onDragOver={(event) => handleDragOver(event, { list: 'users' })}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'users' })}
+        >
         <ScrollShadow
           className="min-h-40 flex-1"
           isDropTarget={dropTarget?.list === 'users' && !dropTarget.beforeId}
@@ -196,18 +204,34 @@ export function SetupScreen({
           />
           <Button onClick={addUser}>Add</Button>
         </div>
-      </Panel>
+        </Panel>
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -bottom-32 z-10 h-32"
+          onDragOver={(event) => handleDragOver(event, { list: 'users' })}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'users' })}
+        />
+      </div>
 
-      <Panel
-        title={`Players (${players.length})`}
-        className={
-          'flex min-h-0 min-w-0 flex-col transition-colors ' +
-          (dropTarget?.list === 'players' ? 'border-accent/60 bg-accent-soft/40' : '')
-        }
-        onDragOver={handlePlayersListDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={(event) => handleDrop(event, { list: 'players' })}
-      >
+      <div className="relative h-full">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-32 z-10 h-32"
+          onDragOver={(event) => handleDragOver(event, { list: 'players', beforeId: players[0]?.id })}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'players', beforeId: players[0]?.id })}
+        />
+        <Panel
+          title={`Players (${players.length})`}
+          className={
+            'flex h-full min-h-0 min-w-0 flex-col transition-colors ' +
+            (dropTarget?.list === 'players' ? 'border-accent/60 bg-accent-soft/40' : '')
+          }
+          onDragOver={handlePlayersListDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'players' })}
+        >
         <p className="mb-2 text-xs text-ink-muted">Drag people between lists or reorder the throw order.</p>
         <ScrollShadow
           className="min-h-40 flex-1"
@@ -241,7 +265,15 @@ export function SetupScreen({
             />
           ))}
         </ScrollShadow>
-      </Panel>
+        </Panel>
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -bottom-32 z-10 h-32"
+          onDragOver={(event) => handleDragOver(event, { list: 'players' })}
+          onDragLeave={handleDragLeave}
+          onDrop={(event) => handleDrop(event, { list: 'players' })}
+        />
+      </div>
 
       <Panel title="Game settings" className="flex min-w-0 flex-col gap-5">
         <GameModeToggle mode={mode} onChange={setMode} />
