@@ -8,7 +8,7 @@ interface CheckoutCalculatorProps {
   doubleOut: boolean
 }
 
-const MAX_OPTIONS = 8
+const MAX_OPTIONS = 10
 
 export function CheckoutCalculator({ remaining, dartsAvailable, doubleOut }: CheckoutCalculatorProps) {
   const options = getCheckoutOptions(remaining, dartsAvailable, doubleOut, MAX_OPTIONS)
