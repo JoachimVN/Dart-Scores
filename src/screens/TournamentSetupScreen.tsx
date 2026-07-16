@@ -119,9 +119,13 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
     setDropTarget(null)
   }
 
+  // Reordering within Players shows an insertion line, never the whole-zone
+  // highlight - that cue is reserved for dragging someone in from Users.
+  const isReorderingPlayers = players.some((player) => player.id === draggedId)
+
   function handlePlayersListDragOver(event: DragEvent<HTMLElement>) {
     const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-roster-id]'))
-    const isAddingPlayer = !players.some((player) => player.id === draggedId)
+    const isAddingPlayer = !isReorderingPlayers
 
     if (isAddingPlayer) {
       if (rows.length > 1) {
@@ -238,7 +242,7 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
         <p className="mb-2 text-xs text-ink-muted">Drag people between lists or reorder the player order.</p>
         <ScrollShadow
           className="min-h-40 flex-1"
-          isDropTarget={dropTarget?.list === 'players' && !dropTarget.beforeId}
+          isDropTarget={dropTarget?.list === 'players' && !dropTarget.beforeId && !isReorderingPlayers}
           onDragOver={handlePlayersListDragOver}
           onDragLeave={handleDragLeave}
           onDrop={(event) => handleDrop(event, { list: 'players' })}
