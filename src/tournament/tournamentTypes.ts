@@ -21,6 +21,8 @@ export interface Matchup {
   legGameIds: string[]
   status: 'pending' | 'complete'
   winnerId: string | null
+  /** Who throws first in leg 1, decided once at random (see ensureFirstLegStarter); legs after that alternate. Null until both slots are filled and the first leg is about to start. */
+  firstLegStarterId: string | null
 }
 
 /** `legsToWin`: legs needed to win a matchup, e.g. best-of-3 -> 2. */

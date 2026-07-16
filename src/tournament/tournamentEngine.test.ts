@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { Player } from '../game/types'
 import {
   createTournament,
+  ensureFirstLegStarter,
   findMatchupByLegGameId,
   findMatchupForPlayers,
+  legStartOrder,
   nextMatchup,
   recordLegResult,
   roundRobinLeaderboard,
@@ -93,6 +95,62 @@ describe('recordLegResult', () => {
 
     const nextRoundMatchup = updated.rounds[1][Math.floor(decidedMatchup.slotIndex / 2)]
     expect(nextRoundMatchup.players.some((slot) => slot.playerId === winnerId)).toBe(true)
+  })
+})
+
+describe('ensureFirstLegStarter / legStartOrder', () => {
+  it('leaves the matchup untouched if either slot is unfilled', () => {
+    const tournament = createTournament(playersOf(3), config)
+    const byeMatchup = tournament.rounds[0].find((m) => m.players[0].bye || m.players[1].bye)!
+    const updated = ensureFirstLegStarter(tournament, byeMatchup.id)
+    expect(updated).toBe(tournament)
+  })
+
+  it('picks one of the two slot players as the leg-1 starter, and is idempotent after that', () => {
+    const tournament = createTournament(playersOf(2), config)
+    const matchup = nextMatchup(tournament)!
+    const slotIds = matchup.players.map((s) => s.playerId)
+
+    const updated = ensureFirstLegStarter(tournament, matchup.id)
+    const decided = nextMatchup(updated)!
+    expect(decided.firstLegStarterId).not.toBeNull()
+    expect(slotIds).toContain(decided.firstLegStarterId)
+
+    // Calling again must not re-roll the starter.
+    const updatedAgain = ensureFirstLegStarter(updated, matchup.id)
+    expect(nextMatchup(updatedAgain)!.firstLegStarterId).toBe(decided.firstLegStarterId)
+  })
+
+  it('is roughly 50/50 over many matchups (regression guard against a hardcoded slot)', () => {
+    let firstSlotWins = 0
+    const trials = 200
+    for (let i = 0; i < trials; i++) {
+      const tournament = createTournament(playersOf(2), config)
+      const matchup = nextMatchup(tournament)!
+      const updated = ensureFirstLegStarter(tournament, matchup.id)
+      const decided = nextMatchup(updated)!
+      if (decided.firstLegStarterId === matchup.players[0].playerId) firstSlotWins++
+    }
+    expect(firstSlotWins).toBeGreaterThan(trials * 0.3)
+    expect(firstSlotWins).toBeLessThan(trials * 0.7)
+  })
+
+  it('returns null before a starter has been decided', () => {
+    const tournament = createTournament(playersOf(2), config)
+    const matchup = nextMatchup(tournament)!
+    expect(legStartOrder(matchup)).toBeNull()
+  })
+
+  it('alternates the starting player every leg after the first', () => {
+    const tournament = createTournament(playersOf(2), config)
+    const matchup = ensureFirstLegStarter(tournament, nextMatchup(tournament)!.id).rounds[0][0]
+    const starter = matchup.firstLegStarterId!
+    const other = matchup.players.find((s) => s.playerId !== starter)!.playerId!
+
+    expect(legStartOrder(matchup)).toEqual([starter, other])
+    expect(legStartOrder({ ...matchup, legGameIds: ['g1'] })).toEqual([other, starter])
+    expect(legStartOrder({ ...matchup, legGameIds: ['g1', 'g2'] })).toEqual([starter, other])
+    expect(legStartOrder({ ...matchup, legGameIds: ['g1', 'g2', 'g3'] })).toEqual([other, starter])
   })
 })
 
