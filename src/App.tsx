@@ -259,16 +259,18 @@ function App() {
     newGame()
   }
 
-  // Instantly restarts the current leg with the exact same players, order and
-  // settings, skipping Setup entirely - used to redo a leg from scratch
-  // without disturbing whatever starting-player order (random or alternated)
-  // was already decided for it.
+  // Instantly restarts the current leg with the same players and settings,
+  // skipping Setup entirely. Casual play reshuffles who goes first (see
+  // derangement()); a tournament leg keeps its order as-is, since who throws
+  // first there is already decided by the matchup's own firstLegStarterId/
+  // legStartOrder bookkeeping and a restart shouldn't second-guess it.
   function handleRestart() {
     if (!game) return
+    const players = tournament ? game.players : derangement(game.players)
     startGame(
       game.mode === 'x01'
-        ? { mode: 'x01', config: game.x01.config, players: game.players }
-        : { mode: 'cricket', config: game.cricket.config, players: game.players },
+        ? { mode: 'x01', config: game.x01.config, players }
+        : { mode: 'cricket', config: game.cricket.config, players },
     )
   }
 
