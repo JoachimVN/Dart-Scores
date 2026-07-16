@@ -7,8 +7,21 @@ describe('getCheckoutOptions (double out)', () => {
     expect(options[0]).toEqual(['T20', 'T20', 'Bull'])
   })
 
-  it('prefers the fewest darts - 40 finishes on a single D20, not a longer sequence', () => {
-    expect(getCheckoutOptions(40, 3, true)).toEqual([['D20']])
+  it('prefers the fewest darts - the single D20 finish is listed first', () => {
+    const options = getCheckoutOptions(40, 3, true)
+    expect(options[0]).toEqual(['D20'])
+  })
+
+  it('pads out with longer finishes once the minimal dart count is exhausted', () => {
+    // Only one 1-dart finish exists for 40 (D20), so with room left under the
+    // limit it should keep going and add distinct 2-dart finishes too.
+    const options = getCheckoutOptions(40, 3, true, 5)
+    expect(options.length).toBeGreaterThan(1)
+    for (const combo of options.slice(1)) {
+      expect(combo).toHaveLength(2)
+      expect(totalValue(combo)).toBe(40)
+      expect(isFinishingLabel(combo.at(-1)!)).toBe(true)
+    }
   })
 
   it('lists the standard 2-dart 100 checkout first: T20, D20', () => {
@@ -73,7 +86,8 @@ describe('getCheckoutOptions (double out)', () => {
 describe('getCheckoutOptions (straight out, no double required)', () => {
   it('allows finishing on a non-double single dart when no other candidate matches', () => {
     // 19 has no double/treble/bull equivalent, so it must fall back to the plain single.
-    expect(getCheckoutOptions(19, 3, false)).toEqual([['19']])
+    const options = getCheckoutOptions(19, 3, false)
+    expect(options[0]).toEqual(['19'])
   })
 })
 
