@@ -36,28 +36,24 @@ function comboSignature(combo: string[]): string {
   return [...combo].sort().join(',')
 }
 
-/**
- * Collects up to `rawLimit` throw sequences (order matters) that reach
- * exactly 0 in exactly `darts` throws. May include sequences that are
- * reorderings of each other; callers dedupe.
- *
- * Results are built by round-robining across first-dart candidates rather
- * than exhausting one candidate's sub-tree before moving to the next -
- * otherwise a first dart with many valid continuations (T20 especially)
- * would crowd out every other opening dart from the list.
- */
-function findFinishesRaw(remaining: number, darts: number, doubleOut: boolean, rawLimit: number): string[][] {
-  if (darts === 1) {
-    const results: string[][] = []
-    for (const candidate of CANDIDATES) {
-      if (results.length >= rawLimit) break
-      if (candidate.value !== remaining) continue
-      if (doubleOut && !isFinishingRing(candidate.ring)) continue
-      results.push([candidate.label])
-    }
-    return results
+function findLastDartFinishes(remaining: number, doubleOut: boolean, rawLimit: number): string[][] {
+  const results: string[][] = []
+  for (const candidate of CANDIDATES) {
+    if (results.length >= rawLimit) break
+    if (candidate.value !== remaining) continue
+    if (doubleOut && !isFinishingRing(candidate.ring)) continue
+    results.push([candidate.label])
   }
+  return results
+}
 
+/** One group of continuations per viable first dart, in candidate order. */
+function findContinuationGroups(
+  remaining: number,
+  darts: number,
+  doubleOut: boolean,
+  rawLimit: number,
+): string[][][] {
   const groups: string[][][] = []
   for (const candidate of CANDIDATES) {
     const rest = remaining - candidate.value
@@ -71,17 +67,39 @@ function findFinishesRaw(remaining: number, darts: number, doubleOut: boolean, r
     if (tails.length === 0) continue
     groups.push(tails.map((tail) => [candidate.label, ...tail]))
   }
+  return groups
+}
 
+/**
+ * Round-robins across groups rather than exhausting one group's continuations
+ * before moving to the next - otherwise a first dart with many valid
+ * continuations (T20 especially) would crowd out every other opening dart.
+ */
+function roundRobin(groups: string[][][], rawLimit: number): string[][] {
   const results: string[][] = []
-  for (let round = 0; results.length < rawLimit; round++) {
+  let round = 0
+  while (results.length < rawLimit) {
     const before = results.length
     for (const group of groups) {
       if (results.length >= rawLimit) break
       if (round < group.length) results.push(group[round])
     }
     if (results.length === before) break // every group exhausted
+    round++
   }
   return results
+}
+
+/**
+ * Collects up to `rawLimit` throw sequences (order matters) that reach
+ * exactly 0 in exactly `darts` throws. May include sequences that are
+ * reorderings of each other; callers dedupe.
+ */
+function findFinishesRaw(remaining: number, darts: number, doubleOut: boolean, rawLimit: number): string[][] {
+  if (darts === 1) return findLastDartFinishes(remaining, doubleOut, rawLimit)
+
+  const groups = findContinuationGroups(remaining, darts, doubleOut, rawLimit)
+  return roundRobin(groups, rawLimit)
 }
 
 /**
