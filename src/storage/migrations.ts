@@ -167,4 +167,33 @@ export const migrations: Migration[] = [
       return { ...root, activeGame, activeTournament }
     },
   },
+  {
+    from: 11,
+    to: 12,
+    migrate: (data) => {
+      // Random/alternating leg-1 starters are new - existing matchups predate
+      // the concept, so they're untouched (still whoever the fixed slot order
+      // used to always start), not retroactively decided.
+      const root = data as { activeTournament?: { rounds?: Array<Array<Record<string, unknown>>> } | null }
+      if (!root.activeTournament) return root
+      return {
+        ...root,
+        activeTournament: {
+          ...root.activeTournament,
+          rounds: (root.activeTournament.rounds ?? []).map((matchups) =>
+            matchups.map((matchup) => ({ firstLegStarterId: null, ...matchup })),
+          ),
+        },
+      }
+    },
+  },
+  {
+    from: 12,
+    to: 13,
+    migrate: (data) => {
+      // New requireTurnConfirmation/showMissButton settings, both off by default.
+      const root = data as { settings?: Partial<ReturnType<typeof defaultSettings>> }
+      return { ...root, settings: { ...defaultSettings(), ...root.settings } }
+    },
+  },
 ]

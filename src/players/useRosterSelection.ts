@@ -44,8 +44,15 @@ export function useRosterSelection(initialPlayers?: Player[]) {
     setAllUsers((prev) => prev.map((u) => (u.id === id ? updated : u)))
   }
 
-  function addToGame(id: string) {
-    setSelectedIds((prev) => [...prev, id])
+  /** Adds a user to the game, or moves an existing player before `beforeId`. */
+  function placeInGame(id: string, beforeId?: string) {
+    setSelectedIds((prev) => {
+      if (beforeId === id) return prev
+      const next = prev.filter((selectedId) => selectedId !== id)
+      const targetIndex = beforeId ? next.indexOf(beforeId) : next.length
+      next.splice(targetIndex === -1 ? next.length : targetIndex, 0, id)
+      return next
+    })
   }
 
   function removeFromGame(id: string) {
@@ -60,7 +67,7 @@ export function useRosterSelection(initialPlayers?: Player[]) {
     addUser,
     deleteUser,
     renameUser,
-    addToGame,
+    placeInGame,
     removeFromGame,
   }
 }

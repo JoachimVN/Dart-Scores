@@ -17,8 +17,9 @@ import { TournamentRoundRobinScreen } from './screens/TournamentRoundRobinScreen
 import { TournamentSetupScreen } from './screens/TournamentSetupScreen'
 import { getSettings, updateSettings } from './settings/settingsRepository'
 import type { Settings } from './storage/schema'
+import { derangement } from './shared/random'
 import { resetAllData } from './storage/storage'
-import { findMatchupByLegGameId } from './tournament/tournamentEngine'
+import { ensureFirstLegStarter, findMatchupByLegGameId, legStartOrder, nextMatchup } from './tournament/tournamentEngine'
 import type { Matchup, Tournament } from './tournament/tournamentTypes'
 
 // Lazy-loaded so recharts (only needed here) doesn't bloat the main bundle.
@@ -47,10 +48,12 @@ interface MainContentArgs {
   readonly startGame: ReturnType<typeof useGame>['startGame']
   readonly startTournament: ReturnType<typeof useTournament>['startTournament']
   readonly onThrow: ReturnType<typeof useGame>['throwDart']
+  readonly onEndTurn: () => void
   readonly onUndo: () => void
   readonly onRedo: () => void
   readonly canRedo: boolean
   readonly onNewGame: () => void
+  readonly onRestart: () => void
   readonly onRematch: () => void
   readonly onPlayNextLeg: () => void
   readonly onAbandonTournament: () => void
@@ -129,13 +132,15 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
         <PlayScreen
           game={game}
           onThrow={args.onThrow}
+          onEndTurn={args.onEndTurn}
           onUndo={args.onUndo}
           onRedo={args.onRedo}
           canRedo={args.canRedo}
           onNewGame={args.onNewGame}
-          onRestart={args.onRematch}
+          onRestart={args.onRestart}
           useDartNotation={settings.useDartNotation}
           showCheckoutSuggestions={settings.showCheckoutSuggestions}
+          showMissButton={settings.showMissButton}
         />
       </>
     )
@@ -205,13 +210,15 @@ function renderCasualContent(args: MainContentArgs): ReactNode {
       <PlayScreen
         game={game}
         onThrow={args.onThrow}
+        onEndTurn={args.onEndTurn}
         onUndo={args.onUndo}
         onRedo={args.onRedo}
         canRedo={args.canRedo}
         onNewGame={args.onNewGame}
-        onRestart={args.onRematch}
+        onRestart={args.onRestart}
         useDartNotation={settings.useDartNotation}
         showCheckoutSuggestions={settings.showCheckoutSuggestions}
+        showMissButton={settings.showMissButton}
       />
     </>
   )
@@ -224,8 +231,8 @@ function renderMainContent(args: MainContentArgs): ReactNode {
 }
 
 function App() {
-  const { game, startGame, throwDart, undo, redo, canRedo, newGame } = useGame()
-  const { tournament, matchup, startTournament, abandonTournament } = useTournament(game)
+  const { game, startGame, throwDart, endTurn, undo, redo, canRedo, newGame } = useGame()
+  const { tournament, matchup, startTournament, abandonTournament, updateTournament } = useTournament(game)
   const [settings, setSettings] = useState<Settings>(() => getSettings())
   const [view, setView] = useState<'main' | 'stats'>('main')
   const [lastPlayers, setLastPlayers] = useState<Player[]>([])
@@ -252,23 +259,46 @@ function App() {
     newGame()
   }
 
-  // Instantly starts a fresh game with the exact same players and settings,
-  // skipping Setup entirely - "New game" above is for when you want to
-  // change something first. Also used to replay a tournament leg from
-  // scratch, since a leg's players/config are just the current game's.
-  function handleRematch() {
+  // Instantly restarts the current leg with the same players and settings,
+  // skipping Setup entirely. Casual play reshuffles who goes first (see
+  // derangement()); a tournament leg keeps its order as-is, since who throws
+  // first there is already decided by the matchup's own firstLegStarterId/
+  // legStartOrder bookkeeping and a restart shouldn't second-guess it.
+  function handleRestart() {
     if (!game) return
+    const players = tournament ? game.players : derangement(game.players)
     startGame(
       game.mode === 'x01'
-        ? { mode: 'x01', config: game.x01.config, players: game.players }
-        : { mode: 'cricket', config: game.cricket.config, players: game.players },
+        ? { mode: 'x01', config: game.x01.config, players }
+        : { mode: 'cricket', config: game.cricket.config, players },
     )
   }
 
+  // Post-game "Rematch": a genuinely new game, so nobody keeps the seat they
+  // just had - see derangement(). Casual play only (a tournament leg's next
+  // matchup uses handlePlayNextLeg's own start-order rule instead).
+  function handleRematch() {
+    if (!game) return
+    const players = derangement(game.players)
+    startGame(
+      game.mode === 'x01'
+        ? { mode: 'x01', config: game.x01.config, players }
+        : { mode: 'cricket', config: game.cricket.config, players },
+    )
+  }
+
+  // Leg 1 of a matchup is a random throw; every leg after that alternates who
+  // goes first (see ensureFirstLegStarter/legStartOrder) - standard darts
+  // convention, independent of who won the previous leg.
   function handlePlayNextLeg() {
     if (!tournament || !matchup) return
-    const ids = matchup.players.map((slot) => slot.playerId).filter((id): id is string => id !== null)
-    const legPlayers = ids.map((id) => tournament.players.find((p) => p.id === id)!).filter(Boolean)
+    const readyTournament = ensureFirstLegStarter(tournament, matchup.id)
+    if (readyTournament !== tournament) updateTournament(readyTournament)
+    const readyMatchup = nextMatchup(readyTournament) ?? matchup
+    const orderedIds =
+      legStartOrder(readyMatchup) ??
+      readyMatchup.players.map((slot) => slot.playerId).filter((id): id is string => id !== null)
+    const legPlayers = orderedIds.map((id) => tournament.players.find((p) => p.id === id)!).filter(Boolean)
     const { config } = tournament
     startGame(
       config.mode === 'x01'
@@ -324,10 +354,12 @@ function App() {
     startGame,
     startTournament,
     onThrow: throwDart,
+    onEndTurn: endTurn,
     onUndo: undo,
     onRedo: redo,
     canRedo,
     onNewGame: handleNewGame,
+    onRestart: handleRestart,
     onRematch: handleRematch,
     onPlayNextLeg: handlePlayNextLeg,
     onAbandonTournament: handleAbandonTournament,

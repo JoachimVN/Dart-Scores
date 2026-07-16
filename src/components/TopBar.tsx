@@ -2,7 +2,71 @@ import { useEffect, useRef, useState } from 'react'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
 import type { Settings, Theme } from '../storage/schema'
 import { Button } from './ui/Button'
-import { selectClass } from './ui/Panel'
+
+const THEMES: { value: Theme; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
+
+function ThemePicker({ theme, onChange }: Readonly<{ theme: Theme; onChange: (theme: Theme) => void }>) {
+  return (
+    <div className="flex gap-1 rounded-(--radius-md) bg-sunken p-1">
+      {THEMES.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={theme === value}
+          onClick={() => onChange(value)}
+          className={
+            'h-8 flex-1 cursor-pointer rounded-[calc(var(--radius-md)-3px)] text-sm font-semibold transition-colors ' +
+            (theme === value ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-ink-muted hover:text-ink')
+          }
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+interface ToggleRowProps {
+  readonly label: string
+  readonly hint?: string
+  readonly checked: boolean
+  readonly onChange: (checked: boolean) => void
+}
+
+function ToggleRow({ label, hint, checked, onChange }: ToggleRowProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex w-full cursor-pointer items-center justify-between gap-3 bg-transparent p-0 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-ink">{label}</span>
+        {hint && <span className="block text-xs text-ink-muted">{hint}</span>}
+      </span>
+      <span
+        aria-hidden
+        className={
+          'relative h-5.5 w-9.5 shrink-0 rounded-full transition-colors ' +
+          (checked ? 'bg-accent' : 'bg-line-strong')
+        }
+      >
+        <span
+          className={
+            'absolute top-0.5 left-0.5 h-4.5 w-4.5 rounded-full bg-card shadow-sm transition-transform ' +
+            (checked ? 'translate-x-4' : '')
+          }
+        />
+      </span>
+    </button>
+  )
+}
 
 interface TopBarProps {
   /** Static label for now (only X01 exists); a slot ready for when more modes are added. */
@@ -70,46 +134,34 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onR
         </Button>
 
         {settingsOpen && (
-          <div className="absolute top-full right-0 z-10 mt-2 flex w-64 flex-col gap-4 rounded-(--radius-lg) border border-line bg-card p-4 shadow-lg">
-            <div>
-              <h2 className="m-0 text-sm font-semibold">Display settings</h2>
-              <p className="mt-1 mb-0 text-xs leading-relaxed text-ink-muted">
-                Changes apply immediately. Game rules and Cricket targets are chosen before a game starts.
-              </p>
-            </div>
+          <div className="absolute top-full right-0 z-10 mt-2 flex w-72 flex-col gap-3 rounded-(--radius-lg) border border-line bg-card p-4 shadow-lg">
+            <ThemePicker theme={settings.theme} onChange={(theme) => onSettingsChange({ theme })} />
 
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              <span>Theme</span>
-              <select
-                className={selectClass}
-                value={settings.theme}
-                onChange={(e) => onSettingsChange({ theme: e.target.value as Theme })}
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="system">System</option>
-              </select>
-            </label>
-
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 accent-(--accent)"
+            <div className="flex flex-col gap-3 border-t border-line pt-3">
+              <ToggleRow
+                label="Dart notation"
+                hint="T20 instead of 60"
                 checked={settings.useDartNotation}
-                onChange={(e) => onSettingsChange({ useDartNotation: e.target.checked })}
+                onChange={(useDartNotation) => onSettingsChange({ useDartNotation })}
               />
-              <span>Show dart notation (T20) instead of points (60)</span>
-            </label>
-
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 accent-(--accent)"
+              <ToggleRow
+                label="Checkout suggestions"
                 checked={settings.showCheckoutSuggestions}
-                onChange={(e) => onSettingsChange({ showCheckoutSuggestions: e.target.checked })}
+                onChange={(showCheckoutSuggestions) => onSettingsChange({ showCheckoutSuggestions })}
               />
-              <span>Show checkout suggestions</span>
-            </label>
+              <ToggleRow
+                label="Confirm turn end"
+                hint="Done button instead of auto-advance"
+                checked={settings.requireTurnConfirmation}
+                onChange={(requireTurnConfirmation) => onSettingsChange({ requireTurnConfirmation })}
+              />
+              <ToggleRow
+                label="Miss button"
+                hint="Log darts that miss the board"
+                checked={settings.showMissButton}
+                onChange={(showMissButton) => onSettingsChange({ showMissButton })}
+              />
+            </div>
 
             <div className="border-t border-line pt-3">
               <Button variant="danger" size="sm" className="w-full" onClick={handleResetAllData}>

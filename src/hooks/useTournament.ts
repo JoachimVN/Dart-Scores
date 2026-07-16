@@ -30,6 +30,12 @@ export function useTournament(activeLeg: GameState | null) {
     setTournament(null)
   }, [])
 
+  /** Persists an already-computed tournament update (e.g. ensureFirstLegStarter's result). */
+  const updateTournament = useCallback((next: Tournament) => {
+    saveActiveTournament(next)
+    setTournament(next)
+  }, [])
+
   // Records a leg's result once its GameState completes. Matches by the leg's
   // player-id pair (not nextMatchup) since recordLegResult may already have
   // advanced the bracket pointer to a different matchup by the time this
@@ -62,5 +68,6 @@ export function useTournament(activeLeg: GameState | null) {
     matchup: tournament ? nextMatchup(tournament) : null,
     startTournament,
     abandonTournament,
+    updateTournament,
   }
 }

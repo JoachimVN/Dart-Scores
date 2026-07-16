@@ -2,12 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   applyThrow as cricketApplyThrow,
   createCricketGame,
+  endTurn as cricketEndTurn,
   lastThrow as cricketLastThrow,
   undoLastThrow as cricketUndoLastThrow,
 } from '../game/cricket/cricketEngine'
-import { applyThrow as x01ApplyThrow, createX01Game, lastThrow as x01LastThrow, undoLastThrow as x01UndoLastThrow } from '../game/x01/x01Engine'
+import {
+  applyThrow as x01ApplyThrow,
+  createX01Game,
+  endTurn as x01EndTurn,
+  lastThrow as x01LastThrow,
+  undoLastThrow as x01UndoLastThrow,
+} from '../game/x01/x01Engine'
 import type { ThrowInput } from '../game/x01/x01Engine'
 import type { GameState, NewGameParams, Throw } from '../game/types'
+import { getSettings } from '../settings/settingsRepository'
 import { generateId } from '../shared/id'
 import { clearActiveGame, loadActiveGame, saveActiveGame } from '../storage/gameRepository'
 import { buildGameSummary } from '../stats/buildGameSummary'
@@ -24,13 +32,23 @@ function buildGameState(params: NewGameParams): GameState {
 }
 
 /** Applies one dart to whichever mode's engine the game is using, and recomputes status from its winnerId. */
-function applyThrowToGame(game: GameState, throwInput: ThrowInput): GameState {
+function applyThrowToGame(game: GameState, throwInput: ThrowInput, manualTurnEnd: boolean): GameState {
   if (game.mode === 'x01') {
-    const x01 = x01ApplyThrow(game.x01, throwInput)
+    const x01 = x01ApplyThrow(game.x01, throwInput, { manualTurnEnd })
     return { ...game, x01, status: x01.winnerId === null ? 'in_progress' : 'complete' }
   }
-  const cricket = cricketApplyThrow(game.cricket, throwInput)
+  const cricket = cricketApplyThrow(game.cricket, throwInput, { manualTurnEnd })
   return { ...game, cricket, status: cricket.winnerId === null ? 'in_progress' : 'complete' }
+}
+
+/** Commits a held (pending) turn, if any - returns the same game object when there's nothing to commit. */
+function endTurnOfGame(game: GameState): GameState {
+  if (game.mode === 'x01') {
+    const x01 = x01EndTurn(game.x01)
+    return x01 === game.x01 ? game : { ...game, x01, status: x01.winnerId === null ? 'in_progress' : 'complete' }
+  }
+  const cricket = cricketEndTurn(game.cricket)
+  return cricket === game.cricket ? game : { ...game, cricket, status: cricket.winnerId === null ? 'in_progress' : 'complete' }
 }
 
 function undoGame(game: GameState): GameState {
@@ -74,8 +92,23 @@ export function useGame() {
   const throwDart = useCallback((throwInput: ThrowInput) => {
     setSession((current) => {
       if (!current.game || current.game.status === 'complete') return current
-      const next: GameState = { ...applyThrowToGame(current.game, throwInput), updatedAt: Date.now() }
+      // Read the setting fresh per throw (not captured at mount) so toggling
+      // it mid-game applies to the very next dart.
+      const manualTurnEnd = getSettings().requireTurnConfirmation
+      const next: GameState = { ...applyThrowToGame(current.game, throwInput, manualTurnEnd), updatedAt: Date.now() }
       saveActiveGame(next)
+      return { game: next, redoStack: [] }
+    })
+  }, [])
+
+  const endTurn = useCallback(() => {
+    setSession((current) => {
+      if (!current.game || current.game.status === 'complete') return current
+      const ended = endTurnOfGame(current.game)
+      if (ended === current.game) return current
+      const next: GameState = { ...ended, updatedAt: Date.now() }
+      saveActiveGame(next)
+      // Committing the held turn invalidates redo history, same as a new throw.
       return { game: next, redoStack: [] }
     })
   }, [])
@@ -111,7 +144,8 @@ export function useGame() {
     setSession((current) => {
       if (!current.game || current.redoStack.length === 0) return current
       const throwInput = current.redoStack.at(-1)!
-      const next: GameState = { ...applyThrowToGame(current.game, throwInput), updatedAt: Date.now() }
+      const manualTurnEnd = getSettings().requireTurnConfirmation
+      const next: GameState = { ...applyThrowToGame(current.game, throwInput, manualTurnEnd), updatedAt: Date.now() }
       saveActiveGame(next)
       return { game: next, redoStack: current.redoStack.slice(0, -1) }
     })
@@ -126,6 +160,7 @@ export function useGame() {
     game,
     startGame,
     throwDart,
+    endTurn,
     undo,
     redo,
     newGame,

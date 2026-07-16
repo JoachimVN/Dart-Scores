@@ -43,6 +43,7 @@ function emptyMatchup(round: number, slotIndex: number, legsToWin: number): Matc
     legGameIds: [],
     status: 'pending',
     winnerId: null,
+    firstLegStarterId: null,
   }
 }
 
@@ -228,6 +229,34 @@ function maybeCompleteRoundRobin(tournament: Tournament): Tournament {
   if (!allDone) return tournament
   const championId = roundRobinLeaderboard(tournament)[0]?.player.id ?? null
   return { ...tournament, status: 'complete', championId, updatedAt: Date.now() }
+}
+
+/**
+ * Standard darts convention: leg 1 of a matchup is decided by a random throw, then players
+ * alternate who goes first every leg after that - regardless of who won the previous leg.
+ * Decides (and persists) that leg-1 starter once, the first time it's called for a matchup
+ * with both slots filled; every call after that is a no-op.
+ */
+export function ensureFirstLegStarter(tournament: Tournament, matchupId: string): Tournament {
+  const location = findMatchupLocation(tournament, matchupId)
+  if (!location) return tournament
+  const matchup = tournament.rounds[location.round][location.index]
+  if (matchup.firstLegStarterId) return tournament
+  const [slotA, slotB] = matchup.players
+  if (!slotA.playerId || !slotB.playerId) return tournament
+  const firstLegStarterId = Math.random() < 0.5 ? slotA.playerId : slotB.playerId
+  return replaceMatchup(tournament, location.round, location.index, { ...matchup, firstLegStarterId })
+}
+
+/**
+ * Player ids in throw order for whichever leg is next (`legGameIds.length`), alternating from
+ * `firstLegStarterId` every leg. Null if the matchup isn't ready yet (see ensureFirstLegStarter).
+ */
+export function legStartOrder(matchup: Matchup): [string, string] | null {
+  const [slotA, slotB] = matchup.players
+  if (!slotA.playerId || !slotB.playerId || !matchup.firstLegStarterId) return null
+  const other = matchup.firstLegStarterId === slotA.playerId ? slotB.playerId : slotA.playerId
+  return matchup.legGameIds.length % 2 === 0 ? [matchup.firstLegStarterId, other] : [other, matchup.firstLegStarterId]
 }
 
 /** The one matchup that's currently playable: not yet decided, with both slots filled. Rounds/slots are walked in order, so v1 only ever surfaces one matchup at a time even if a round has several independently-playable ones. */

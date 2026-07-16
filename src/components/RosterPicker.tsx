@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react'
 import { Button } from './ui/Button'
 import { inputClass } from './ui/Panel'
 
@@ -25,7 +25,16 @@ function TrashIcon() {
  * an always-visible scrollbar when the OS is set to auto-hide on trackpad -
  * so this tracks real scrollTop/scrollHeight instead (see index.css).
  */
-export function ScrollShadow({ children }: { readonly children: ReactNode }) {
+interface ScrollShadowProps {
+  readonly children: ReactNode
+  readonly className?: string
+  readonly isDropTarget?: boolean
+  readonly onDragOver?: (event: DragEvent<HTMLUListElement>) => void
+  readonly onDragLeave?: (event: DragEvent<HTMLUListElement>) => void
+  readonly onDrop?: (event: DragEvent<HTMLUListElement>) => void
+}
+
+export function ScrollShadow({ children, className, isDropTarget, onDragOver, onDragLeave, onDrop }: ScrollShadowProps) {
   const ref = useRef<HTMLUListElement>(null)
   const [canScrollUp, setCanScrollUp] = useState(false)
   const [canScrollDown, setCanScrollDown] = useState(false)
@@ -43,11 +52,17 @@ export function ScrollShadow({ children }: { readonly children: ReactNode }) {
   })
 
   return (
-    <div className="relative my-2">
+    <div className={'relative my-2 ' + (className ?? '')}>
       <ul
         ref={ref}
         onScroll={updateShadows}
-        className="flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={
+          'flex h-full min-h-40 max-h-[60vh] list-none flex-col gap-2 overflow-y-auto rounded-(--radius-md) py-2 transition-colors ' +
+          (isDropTarget ? 'bg-accent-soft ring-1 ring-accent/50' : '')
+        }
       >
         {children}
       </ul>
@@ -58,18 +73,46 @@ export function ScrollShadow({ children }: { readonly children: ReactNode }) {
 }
 
 interface RosterRowProps {
+  readonly id: string
   readonly name: string
   /** Tints the row with the accent to mark it as picked for the game. */
   readonly selected?: boolean
   readonly onMove: () => void
   readonly onDelete?: () => void
   readonly onRename?: (name: string) => void
+  readonly draggable?: boolean
+  readonly isDragging?: boolean
+  readonly isDropTarget?: boolean
+  /** Paints an insertion line over this row without changing list layout. */
+  readonly insertionPreview?: 'before' | 'after'
+  readonly onDragStart?: (event: DragEvent<HTMLLIElement>) => void
+  readonly onDragEnd?: () => void
+  readonly onDragOver?: (event: DragEvent<HTMLLIElement>) => void
+  readonly onDragLeave?: (event: DragEvent<HTMLLIElement>) => void
+  readonly onDrop?: (event: DragEvent<HTMLLIElement>) => void
 }
 
 /** A name that moves the person to the other list when clicked. */
-export function RosterRow({ name, selected, onMove, onDelete, onRename }: RosterRowProps) {
+export function RosterRow({
+  id,
+  name,
+  selected,
+  onMove,
+  onDelete,
+  onRename,
+  draggable,
+  isDragging,
+  isDropTarget,
+  insertionPreview,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: RosterRowProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(name)
+  const draggedSinceLastClick = useRef(false)
 
   // Keep the draft in sync if the underlying name changes while not editing (e.g. renamed elsewhere).
   useEffect(() => {
@@ -81,6 +124,16 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
     const trimmed = draft.trim()
     if (trimmed && trimmed !== name) onRename?.(trimmed)
     else setDraft(name)
+  }
+
+  function handleMove(event: MouseEvent<HTMLElement>) {
+    if (draggedSinceLastClick.current) {
+      event.preventDefault()
+      event.stopPropagation()
+      draggedSinceLastClick.current = false
+      return
+    }
+    onMove()
   }
 
   if (editing) {
@@ -109,16 +162,41 @@ export function RosterRow({ name, selected, onMove, onDelete, onRename }: Roster
 
   return (
     <li
+      data-roster-id={id}
+      draggable={draggable}
+      onDragStart={(event) => {
+        draggedSinceLastClick.current = true
+        onDragStart?.(event)
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onClick={handleMove}
+      aria-roledescription={draggable ? 'draggable user' : undefined}
+      aria-label={draggable ? `${name}. Drag to move or reorder.` : undefined}
       className={
-        'flex items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-colors ' +
+        'relative flex items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-[background-color,border-color,opacity,transform] ' +
+        (draggable ? 'cursor-pointer ' : '') +
+        (isDragging ? 'scale-[0.98] opacity-40 ' : '') +
+        (isDropTarget ? 'border-accent ' : '') +
         (selected
           ? 'border-accent/40 bg-accent-soft hover:border-accent/70'
-          : 'border-line bg-card hover:bg-sunken')
+          : 'border-line bg-card hover:bg-sunken/50')
       }
     >
+      {insertionPreview && (
+        <span
+          aria-hidden="true"
+          className={
+            'pointer-events-none absolute inset-x-1 h-1 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)] ' +
+            (insertionPreview === 'before' ? '-top-1.5' : '-bottom-1.5')
+          }
+        />
+      )}
       <button
         type="button"
-        onClick={onMove}
+        onClick={handleMove}
         className="min-w-0 flex-1 cursor-pointer truncate text-left font-medium outline-none focus-visible:underline"
       >
         {name}

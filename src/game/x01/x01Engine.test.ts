@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { Player } from '../types'
-import { applyThrow, createX01Game, lastThrow, liveRemaining, undoLastThrow, type ThrowInput } from './x01Engine'
+import {
+  applyThrow,
+  createX01Game,
+  endTurn,
+  isPendingBust,
+  isTurnPending,
+  lastThrow,
+  liveRemaining,
+  undoLastThrow,
+  type ThrowInput,
+} from './x01Engine'
 
 const players: Player[] = [
   { id: 'p1', name: 'Alice' },
@@ -119,6 +129,102 @@ describe('applyThrow', () => {
     state = applyThrow(state, throwOf(20))
 
     expect(state).toEqual(afterWin)
+  })
+})
+
+describe('manual turn end', () => {
+  const manual = { manualTurnEnd: true }
+
+  it('holds a finished 3-dart turn uncommitted instead of advancing', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+    expect(isTurnPending(state)).toBe(false)
+    state = applyThrow(state, throwOf(20), manual)
+
+    expect(isTurnPending(state)).toBe(true)
+    expect(state.currentTurnThrows).toHaveLength(3)
+    expect(state.playerStates[0].remaining).toBe(501) // not committed
+    expect(state.playerStates[0].turns).toHaveLength(0)
+    expect(state.currentPlayerIndex).toBe(0) // not advanced
+  })
+
+  it('ignores further throws while a turn is held', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+    const held = state
+
+    // Even without the manual option (e.g. the setting was toggled off mid-hold).
+    expect(applyThrow(state, throwOf(5), manual)).toEqual(held)
+    expect(applyThrow(state, throwOf(5))).toEqual(held)
+  })
+
+  it('holds a bust immediately, flagged by isPendingBust', () => {
+    let state = createX01Game({ startingScore: 20, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(60, 'treble', 20), manual) // 20 - 60 < 0
+
+    expect(isTurnPending(state)).toBe(true)
+    expect(isPendingBust(state)).toBe(true)
+    expect(state.currentTurnThrows).toHaveLength(1)
+    expect(state.playerStates[0].turns).toHaveLength(0)
+  })
+
+  it('still commits a win immediately', () => {
+    let state = createX01Game({ startingScore: 40, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(40, 'double', 20), manual)
+
+    expect(state.winnerId).toBe('p1')
+    expect(state.currentTurnThrows).toEqual([])
+    expect(isTurnPending(state)).toBe(false)
+  })
+
+  it('endTurn commits the held turn and advances to the next player', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+
+    state = endTurn(state)
+
+    expect(state.playerStates[0].remaining).toBe(441)
+    expect(state.playerStates[0].turns).toHaveLength(1)
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.currentTurnThrows).toEqual([])
+    expect(isTurnPending(state)).toBe(false)
+  })
+
+  it('endTurn commits a held bust, rolling the score back', () => {
+    let state = createX01Game({ startingScore: 20, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(60, 'treble', 20), manual)
+
+    state = endTurn(state)
+
+    expect(state.playerStates[0].remaining).toBe(20)
+    expect(state.playerStates[0].turns[0].bust).toBe(true)
+    expect(state.currentPlayerIndex).toBe(1)
+  })
+
+  it('endTurn is a no-op while the turn is still in progress', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20), manual)
+
+    expect(endTurn(state)).toEqual(state)
+  })
+
+  it('undo pops a dart from the held turn, reopening it for throws', () => {
+    let state = createX01Game({ startingScore: 501, doubleOut: true }, players)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+    state = applyThrow(state, throwOf(20), manual)
+
+    state = undoLastThrow(state)
+
+    expect(isTurnPending(state)).toBe(false)
+    expect(state.currentTurnThrows).toHaveLength(2)
+    state = applyThrow(state, throwOf(5), manual)
+    expect(state.currentTurnThrows.map((t) => t.value)).toEqual([20, 20, 5])
   })
 })
 

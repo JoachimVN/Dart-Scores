@@ -28,7 +28,13 @@ describe('saveRoot / loadRoot round-trip', () => {
     const root = {
       players: [{ id: 'p1', name: 'Alice' }],
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'dark' as const, showCheckoutSuggestions: false },
+      settings: {
+        useDartNotation: false,
+        theme: 'dark' as const,
+        showCheckoutSuggestions: false,
+        requireTurnConfirmation: true,
+        showMissButton: true,
+      },
       history: [],
       activeTournament: null,
     }
@@ -54,7 +60,7 @@ describe('migrations', () => {
     expect(loadRoot()).toEqual({
       players: v2Data.players,
       activeGame: null,
-      settings: { useDartNotation: false, theme: 'system', showCheckoutSuggestions: true },
+      settings: { ...defaultSettings(), useDartNotation: false },
       history: [],
       activeTournament: null,
     })
@@ -167,7 +173,12 @@ describe('migrations', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 7, data: v7Data }))
     expect(loadRoot()).toEqual({
       ...v7Data,
-      settings: { ...v7Data.settings, showCheckoutSuggestions: true },
+      settings: {
+        ...v7Data.settings,
+        showCheckoutSuggestions: true,
+        requireTurnConfirmation: false,
+        showMissButton: false,
+      },
     })
   })
 
@@ -225,6 +236,21 @@ describe('migrations', () => {
         ...v9Data.activeTournament,
         config: { ...v9Data.activeTournament.config, cricket: standardCricketConfig() },
       },
+    })
+  })
+
+  it('migrates a v12 envelope (no requireTurnConfirmation/showMissButton) defaulting both to false, preserving existing settings', () => {
+    const v12Data = {
+      players: [],
+      activeGame: null,
+      settings: { useDartNotation: false, theme: 'dark', showCheckoutSuggestions: false },
+      history: [],
+      activeTournament: null,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 12, data: v12Data }))
+    expect(loadRoot()).toEqual({
+      ...v12Data,
+      settings: { ...v12Data.settings, requireTurnConfirmation: false, showMissButton: false },
     })
   })
 

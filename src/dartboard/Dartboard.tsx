@@ -21,6 +21,8 @@ interface DartboardProps {
    * change this array, with no separate signal needed.
    */
   readonly displayedThrows: Throw[]
+  /** Blocks clicks entirely (no dart, no cached mark) - used while a held turn awaits its Done confirmation. */
+  readonly disabled?: boolean
 }
 
 interface Mark {
@@ -28,37 +30,50 @@ interface Mark {
   y: number
 }
 
-export function Dartboard({ onThrow, currentTurnDartCount, displayedThrows }: DartboardProps) {
+export function Dartboard({ onThrow, currentTurnDartCount, displayedThrows, disabled = false }: DartboardProps) {
   const svgRef = useRef<SVGSVGElement>(null)
-  // Exact click positions for the turn currently being displayed, indexed
-  // the same as displayedThrows - cleared whenever displayedThrows turns out
-  // to belong to a different turn (see turnKey below), and otherwise filled
-  // in by handleClick as darts land. Entries with no cached click (a redone
-  // dart, or a previous turn reopened by Undo, whose exact click position
-  // this session never recorded) fall back to computeMarkPosition.
-  const marksRef = useRef<Mark[]>([])
+  // Exact click positions keyed by throw id, so a throw with no click of its
+  // own (a Miss-button dart, a redone dart, or a previous turn reopened by
+  // Undo) can never inherit another dart's position. Uncached throws fall
+  // back to computeMarkPosition - except misses, which have no meaningful
+  // board position and simply get no mark (the MISS turn badge covers them).
+  const marksRef = useRef<Map<string, Mark>>(new Map())
+  // The click that produced the throw currently being added. handleClick
+  // can't know the new throw's engine-generated id, so it stashes the click
+  // here and a later render pairs it with the newest displayed throw - "later"
+  // rather than "next", because Cricket's target chooser can hold the throw
+  // in a dialog for several renders before it lands (expectedLength is how
+  // many displayed throws the turn will have once it does).
+  const pendingClickRef = useRef<{ mark: Mark; expectedLength: number } | null>(null)
   // Identifies "which turn" by its first dart's id, which stays constant
   // while that turn's own throws grow/shrink (new dart, undo, redo) and only
   // changes when displayedThrows switches to a genuinely different turn.
   const turnKeyRef = useRef<string | null>(null)
-  // Set by handleClick so the render right after a click can tell "the turn
-  // changed because of the click I already handled" apart from "the turn
-  // changed because Undo/Redo reopened a different one" - only the latter
-  // should blow away the click-position cache.
-  const justClickedRef = useRef(false)
 
   const turnKey = displayedThrows[0]?.id ?? null
   if (turnKey !== turnKeyRef.current) {
-    if (!justClickedRef.current) {
-      marksRef.current = []
-    }
+    // A different turn's throws are now displayed - its darts have no click
+    // positions cached this session, so drop the old turn's. A click that
+    // *started* this new turn re-adds its own position just below.
+    marksRef.current = new Map()
     turnKeyRef.current = turnKey
   }
-  justClickedRef.current = false
 
-  const marks = displayedThrows.map((t, i) => marksRef.current[i] ?? computeMarkPosition(t))
+  const pending = pendingClickRef.current
+  if (pending && displayedThrows.length === pending.expectedLength) {
+    const newest = displayedThrows.at(-1)
+    if (newest && !marksRef.current.has(newest.id)) {
+      marksRef.current.set(newest.id, pending.mark)
+    }
+    pendingClickRef.current = null
+  }
+
+  const marks = displayedThrows.map(
+    (t) => marksRef.current.get(t.id) ?? (t.ring === 'miss' ? null : computeMarkPosition(t)),
+  )
 
   function handleClick(event: React.MouseEvent<SVGSVGElement>) {
+    if (disabled) return
     const svg = svgRef.current
     if (!svg) return
 
@@ -69,11 +84,12 @@ export function Dartboard({ onThrow, currentTurnDartCount, displayedThrows }: Da
     const dx = (event.clientX - centerX) * scale
     const dy = (event.clientY - centerY) * scale
 
-    // currentTurnDartCount === 0 means this click starts a fresh turn, so the
-    // previous turn's marks should disappear now rather than keep accumulating.
-    const mark: Mark = { x: CENTER + dx, y: CENTER + dy }
-    marksRef.current = currentTurnDartCount === 0 ? [mark] : [...marksRef.current, mark]
-    justClickedRef.current = true
+    pendingClickRef.current = {
+      mark: { x: CENTER + dx, y: CENTER + dy },
+      // currentTurnDartCount === 0 means this click starts a fresh turn, whose
+      // displayed list will hold just this dart once it lands.
+      expectedLength: currentTurnDartCount + 1,
+    }
 
     const hit = resolvePoint(dx, dy, BOARD_RADIUS)
     onThrow({ segment: hit.segment, ring: hit.ring, ...scoreHit(hit) })
@@ -81,9 +97,11 @@ export function Dartboard({ onThrow, currentTurnDartCount, displayedThrows }: Da
 
   return (
     <BoardFace svgRef={svgRef} onClick={handleClick}>
-      {displayedThrows.map((t, i) => (
-        <DartMark key={t.id} x={marks[i].x} y={marks[i].y} faded={currentTurnDartCount === 0} />
-      ))}
+      {displayedThrows.map((t, i) => {
+        const mark = marks[i]
+        if (!mark) return null
+        return <DartMark key={t.id} x={mark.x} y={mark.y} faded={currentTurnDartCount === 0} />
+      })}
     </BoardFace>
   )
 }
