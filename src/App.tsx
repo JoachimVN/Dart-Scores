@@ -48,6 +48,7 @@ interface MainContentArgs {
   readonly startGame: ReturnType<typeof useGame>['startGame']
   readonly startTournament: ReturnType<typeof useTournament>['startTournament']
   readonly onThrow: ReturnType<typeof useGame>['throwDart']
+  readonly onEndTurn: () => void
   readonly onUndo: () => void
   readonly onRedo: () => void
   readonly canRedo: boolean
@@ -131,6 +132,7 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
         <PlayScreen
           game={game}
           onThrow={args.onThrow}
+          onEndTurn={args.onEndTurn}
           onUndo={args.onUndo}
           onRedo={args.onRedo}
           canRedo={args.canRedo}
@@ -138,6 +140,7 @@ function renderTournamentContent(args: MainContentArgs & { tournament: Tournamen
           onRestart={args.onRestart}
           useDartNotation={settings.useDartNotation}
           showCheckoutSuggestions={settings.showCheckoutSuggestions}
+          showMissButton={settings.showMissButton}
         />
       </>
     )
@@ -207,6 +210,7 @@ function renderCasualContent(args: MainContentArgs): ReactNode {
       <PlayScreen
         game={game}
         onThrow={args.onThrow}
+        onEndTurn={args.onEndTurn}
         onUndo={args.onUndo}
         onRedo={args.onRedo}
         canRedo={args.canRedo}
@@ -214,6 +218,7 @@ function renderCasualContent(args: MainContentArgs): ReactNode {
         onRestart={args.onRestart}
         useDartNotation={settings.useDartNotation}
         showCheckoutSuggestions={settings.showCheckoutSuggestions}
+        showMissButton={settings.showMissButton}
       />
     </>
   )
@@ -226,7 +231,7 @@ function renderMainContent(args: MainContentArgs): ReactNode {
 }
 
 function App() {
-  const { game, startGame, throwDart, undo, redo, canRedo, newGame } = useGame()
+  const { game, startGame, throwDart, endTurn, undo, redo, canRedo, newGame } = useGame()
   const { tournament, matchup, startTournament, abandonTournament, updateTournament } = useTournament(game)
   const [settings, setSettings] = useState<Settings>(() => getSettings())
   const [view, setView] = useState<'main' | 'stats'>('main')
@@ -347,6 +352,7 @@ function App() {
     startGame,
     startTournament,
     onThrow: throwDart,
+    onEndTurn: endTurn,
     onUndo: undo,
     onRedo: redo,
     canRedo,

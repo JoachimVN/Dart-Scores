@@ -8,10 +8,20 @@ import { Button } from '../components/ui/Button'
 import { Panel } from '../components/ui/Panel'
 import { ScoreDisplay } from '../components/ScoreDisplay'
 import { TurnPanel } from '../components/TurnPanel'
-import { cricketTargetOptions, lastCompletedTurn as lastCompletedCricketTurn, liveMarksAndPoints } from '../game/cricket/cricketEngine'
+import {
+  cricketTargetOptions,
+  isTurnPending as isCricketTurnPending,
+  lastCompletedTurn as lastCompletedCricketTurn,
+  liveMarksAndPoints,
+} from '../game/cricket/cricketEngine'
 import { cricketTargetLabel, type CricketTarget } from '../game/cricket/cricketTypes'
 import type { ThrowInput } from '../game/x01/x01Engine'
-import { lastCompletedTurn as lastCompletedX01Turn, liveRemaining } from '../game/x01/x01Engine'
+import {
+  isPendingBust as isX01PendingBust,
+  isTurnPending as isX01TurnPending,
+  lastCompletedTurn as lastCompletedX01Turn,
+  liveRemaining,
+} from '../game/x01/x01Engine'
 import type { GameState, Throw } from '../game/types'
 import { useWakeLock } from '../hooks/useWakeLock'
 
@@ -21,6 +31,8 @@ interface PlayViewModel {
   currentTurnThrows: Throw[]
   lastTurn: { playerId: string; throws: Throw[] } | null
   bustedPlayerId: string | null
+  /** True while a finished turn is held on screen waiting for its Done confirmation (manual turn end). */
+  turnPending: boolean
   /** The "big number" shown per player in the sidebar - remaining score for X01, points for Cricket. */
   valueFor: (playerId: string) => number
   rightPanel: ReactNode | null
@@ -29,20 +41,32 @@ interface PlayViewModel {
 function buildX01ViewModel(
   game: Extract<GameState, { mode: 'x01' }>,
   showCheckoutSuggestions: boolean,
+  dismissedTurnKey: string | null,
 ): PlayViewModel {
   const { x01 } = game
   const engineCurrentPlayerId = x01.playerStates[x01.currentPlayerIndex].playerId
   const isBetweenTurns = x01.currentTurnThrows.length === 0
   const lastTurn = lastCompletedX01Turn(x01)
+  const lastTurnDismissed = lastTurn?.throws[0]?.id === dismissedTurnKey
+  // A held bust shows the rolled-back score (what the player will keep), not
+  // the negative/dead live total the busting dart would imply.
+  const pendingBust = isX01PendingBust(x01)
 
   return {
     engineCurrentPlayerId,
     currentTurnThrows: x01.currentTurnThrows,
     lastTurn,
-    bustedPlayerId: isBetweenTurns && lastTurn?.bust ? lastTurn.playerId : null,
+    bustedPlayerId: pendingBust
+      ? engineCurrentPlayerId
+      : isBetweenTurns && lastTurn?.bust && !lastTurnDismissed
+        ? lastTurn.playerId
+        : null,
+    turnPending: isX01TurnPending(x01),
     valueFor: (playerId) => {
       const playerState = x01.playerStates.find((ps) => ps.playerId === playerId)!
-      return playerId === engineCurrentPlayerId && !isBetweenTurns ? liveRemaining(x01) : playerState.remaining
+      return playerId === engineCurrentPlayerId && !isBetweenTurns && !pendingBust
+        ? liveRemaining(x01)
+        : playerState.remaining
     },
     rightPanel: showCheckoutSuggestions ? (
       <CheckoutCalculator
@@ -76,6 +100,7 @@ function buildCricketViewModel(game: Extract<GameState, { mode: 'cricket' }>): P
     currentTurnThrows: cricket.currentTurnThrows,
     lastTurn,
     bustedPlayerId: null, // Cricket has no bust concept
+    turnPending: isCricketTurnPending(cricket),
     valueFor: (playerId) => scoreboardEntries.find((e) => e.id === playerId)!.points,
     rightPanel: (
       <CricketScoreboard players={scoreboardEntries} currentPlayerId={engineCurrentPlayerId} targets={cricket.config.targets} />
@@ -86,6 +111,8 @@ function buildCricketViewModel(game: Extract<GameState, { mode: 'cricket' }>): P
 interface PlayScreenProps {
   game: GameState
   onThrow: (throwInput: ThrowInput) => void
+  /** Commits a held turn (manual turn end) - the engine no-ops it unless a turn is actually pending. */
+  onEndTurn: () => void
   onUndo: () => void
   onRedo: () => void
   canRedo: boolean
@@ -93,6 +120,7 @@ interface PlayScreenProps {
   onRestart: () => void
   useDartNotation: boolean
   showCheckoutSuggestions: boolean
+  showMissButton: boolean
 }
 
 // The score list lives in a sidebar to the left of the board (not overlaid
@@ -126,6 +154,7 @@ function useIsWideLayout() {
 export function PlayScreen({
   game,
   onThrow,
+  onEndTurn,
   onUndo,
   onRedo,
   canRedo,
@@ -133,12 +162,23 @@ export function PlayScreen({
   onRestart,
   useDartNotation,
   showCheckoutSuggestions,
+  showMissButton,
 }: PlayScreenProps) {
   useWakeLock()
+  // The turn most recently committed by an explicit Done click, identified by
+  // its first throw's id. The lingering "just played" display below only
+  // exists because auto-advance offers no acknowledgment moment - Done *is*
+  // that acknowledgment, so the dismissed turn's darts/badges/bust highlight
+  // clear immediately instead of fading until the next player's first throw.
+  const [dismissedTurnKey, setDismissedTurnKey] = useState<string | null>(null)
   const viewModel =
-    game.mode === 'x01' ? buildX01ViewModel(game, showCheckoutSuggestions) : buildCricketViewModel(game)
-  const { engineCurrentPlayerId, currentTurnThrows, lastTurn, bustedPlayerId, valueFor, rightPanel } = viewModel
+    game.mode === 'x01'
+      ? buildX01ViewModel(game, showCheckoutSuggestions, dismissedTurnKey)
+      : buildCricketViewModel(game)
+  const { engineCurrentPlayerId, currentTurnThrows, lastTurn, bustedPlayerId, turnPending, valueFor, rightPanel } =
+    viewModel
   const isBetweenTurns = currentTurnThrows.length === 0
+  const lastTurnDismissed = lastTurn?.throws[0]?.id === dismissedTurnKey
   const canUndo = currentTurnThrows.length > 0 || !!lastTurn
   const isWide = useIsWideLayout()
   const [pendingCricketThrow, setPendingCricketThrow] = useState<{ throwInput: BoardThrow; targets: CricketTarget[] } | null>(null)
@@ -147,8 +187,10 @@ export function PlayScreen({
   // went until their replacement actually throws (see Dartboard/TurnPanel) -
   // whoever that is, named directly above those badges so there's no need to
   // infer it from the score list. The score list itself always shows the
-  // real current/next player immediately, with no lag.
-  const displayedCurrentPlayerId = isBetweenTurns && lastTurn ? lastTurn.playerId : engineCurrentPlayerId
+  // real current/next player immediately, with no lag. A turn dismissed via
+  // Done skips this lag entirely (see dismissedTurnKey above).
+  const displayedCurrentPlayerId =
+    isBetweenTurns && lastTurn && !lastTurnDismissed ? lastTurn.playerId : engineCurrentPlayerId
   const displayedPlayerName = game.players.find((p) => p.id === displayedCurrentPlayerId)?.name ?? ''
 
   // The board's own square box has empty space above the drawn rim circle
@@ -191,11 +233,11 @@ export function PlayScreen({
     remaining: valueFor(player.id),
   }))
 
-  // Between turns, currentTurnThrows is already reset to [] (and the engine
-  // commits the final dart directly, so there's never an intermediate render
-  // showing all 3) - fall back to the last completed turn's full throw list
-  // so the last player's hits stay visible until the next turn's first dart.
-  const displayedThrows = isBetweenTurns ? (lastTurn?.throws ?? []) : currentTurnThrows
+  // Between turns, currentTurnThrows is already reset to [] - fall back to
+  // the last completed turn's full throw list so the last player's hits stay
+  // visible until the next turn's first dart, unless that turn was already
+  // acknowledged with Done.
+  const displayedThrows = isBetweenTurns && !lastTurnDismissed ? (lastTurn?.throws ?? []) : currentTurnThrows
 
   function handleQuit() {
     if (globalThis.confirm('Quit this game? Current progress will be lost.')) {
@@ -219,7 +261,18 @@ export function PlayScreen({
     onRedo()
   }, [canRedo, onRedo])
 
+  const handleEndTurn = useCallback(() => {
+    if (!turnPending) return
+    // Remember which turn Done is committing (keyed by its first throw, same
+    // as Dartboard's turnKey) so its lingering display is dismissed at once.
+    setDismissedTurnKey(currentTurnThrows[0]?.id ?? null)
+    onEndTurn()
+  }, [turnPending, currentTurnThrows, onEndTurn])
+
   function handleBoardThrow(throwInput: BoardThrow) {
+    // A held turn accepts no more darts (and, for Cricket, must not pop the
+    // target chooser) until Done commits it.
+    if (turnPending) return
     if (game.mode !== 'cricket') {
       onThrow(throwInput)
       return
@@ -239,9 +292,17 @@ export function PlayScreen({
     setPendingCricketThrow(null)
   }
 
+  // Same shape scoreHit produces for a click outside the scoring rings - the
+  // Miss button is just an explicit, discoverable way to record that.
+  function handleMiss() {
+    handleBoardThrow({ segment: null, ring: 'miss', value: 0, label: 'MISS' })
+  }
+
   // Arrow keys are the primary shortcut (no modifier, easy to discover);
   // Ctrl+Z/Ctrl+Y and Ctrl+Shift+Z are offered on top for players used to
   // those editor/OS conventions. All are equivalent to the buttons below.
+  // Enter confirms a held turn - only intercepted while one is actually
+  // pending, so it can't hijack Enter's native button activation otherwise.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const mod = event.ctrlKey || event.metaKey
@@ -255,12 +316,15 @@ export function PlayScreen({
       } else if (isRedo) {
         event.preventDefault()
         handleRedo()
+      } else if (event.key === 'Enter' && turnPending) {
+        event.preventDefault()
+        handleEndTurn()
       }
     }
 
     globalThis.addEventListener('keydown', handleKeyDown)
     return () => globalThis.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo, handleRedo])
+  }, [handleUndo, handleRedo, turnPending, handleEndTurn])
 
   // Two side columns (sidebar + checkout), not one - each needs its own
   // width+gap reserved, or the total layout can exceed 92vw. The stacked
@@ -275,11 +339,42 @@ export function PlayScreen({
         ref={boardRef}
         style={{ position: 'relative', width: '100%', aspectRatio: '1', containerType: 'inline-size' }}
       >
-        <Dartboard onThrow={handleBoardThrow} currentTurnDartCount={currentTurnThrows.length} displayedThrows={displayedThrows} />
+        <Dartboard
+          onThrow={handleBoardThrow}
+          currentTurnDartCount={currentTurnThrows.length}
+          displayedThrows={displayedThrows}
+          disabled={turnPending}
+        />
 
         <div className="absolute" style={{ bottom: CORNER_INSET, left: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
           <TurnPanel throws={displayedThrows} useDartNotation={useDartNotation} playerName={displayedPlayerName} />
         </div>
+
+        {/* Bottom-right dead-space mirrors the turn panel: a Miss button while
+            darts can still be thrown, swapping to a prominent Done once the
+            turn is held (manual turn end) - they can never apply at once. */}
+        {(turnPending || showMissButton) && (
+          <div className="absolute" style={{ bottom: CORNER_INSET, right: CORNER_INSET, fontSize: CORNER_FONT_SIZE }}>
+            {turnPending ? (
+              <button
+                type="button"
+                onClick={handleEndTurn}
+                title="Done (Enter)"
+                className="cursor-pointer rounded-(--radius-md) border-0 bg-accent px-[1.5em] py-[0.6em] text-[1.1em] font-bold text-on-accent shadow-md transition-colors hover:bg-accent-hover [font-family:inherit]"
+              >
+                Done
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleMiss}
+                className="cursor-pointer rounded-(--radius-md) border border-line-strong bg-card px-[1.1em] py-[0.55em] text-[0.95em] font-semibold text-ink transition-colors hover:bg-sunken [font-family:inherit]"
+              >
+                Miss
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex w-full flex-wrap items-center justify-between gap-2">
