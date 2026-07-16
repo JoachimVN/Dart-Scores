@@ -150,7 +150,7 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
       <div className="relative h-full">
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 -top-32 z-10 h-32"
+          className={'absolute inset-x-0 -top-32 z-10 h-32 ' + (draggedId ? '' : 'pointer-events-none')}
           onDragOver={(event) => handleDragOver(event, { list: 'users' })}
           onDragLeave={handleDragLeave}
           onDrop={(event) => handleDrop(event, { list: 'users' })}
@@ -210,7 +210,7 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
         </Panel>
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 -bottom-32 z-10 h-32"
+          className={'absolute inset-x-0 -bottom-32 z-10 h-32 ' + (draggedId ? '' : 'pointer-events-none')}
           onDragOver={(event) => handleDragOver(event, { list: 'users' })}
           onDragLeave={handleDragLeave}
           onDrop={(event) => handleDrop(event, { list: 'users' })}
@@ -220,7 +220,7 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
       <div className="relative h-full">
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 -top-32 z-10 h-32"
+          className={'absolute inset-x-0 -top-32 z-10 h-32 ' + (draggedId ? '' : 'pointer-events-none')}
           onDragOver={(event) => handleDragOver(event, { list: 'players', beforeId: players[0]?.id })}
           onDragLeave={handleDragLeave}
           onDrop={(event) => handleDrop(event, { list: 'players', beforeId: players[0]?.id })}
@@ -271,7 +271,7 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
         </Panel>
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 -bottom-32 z-10 h-32"
+          className={'absolute inset-x-0 -bottom-32 z-10 h-32 ' + (draggedId ? '' : 'pointer-events-none')}
           onDragOver={(event) => handleDragOver(event, { list: 'players' })}
           onDragLeave={handleDragLeave}
           onDrop={(event) => handleDrop(event, { list: 'players' })}
