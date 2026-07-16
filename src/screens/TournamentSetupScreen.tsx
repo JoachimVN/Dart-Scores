@@ -105,11 +105,15 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
     setDropTarget(null)
   }
 
-  function handlePlayersListDragOver(event: DragEvent<HTMLUListElement>) {
+  function handlePlayersListDragOver(event: DragEvent<HTMLElement>) {
     const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-roster-id]'))
     const isAddingPlayer = !players.some((player) => player.id === draggedId)
 
     if (isAddingPlayer) {
+      if (rows.length > 1 && event.clientY < rows[0].getBoundingClientRect().top) {
+        handleDragOver(event, { list: 'players', beforeId: rows[0].dataset.rosterId })
+        return
+      }
       for (let index = 0; index < rows.length - 1; index++) {
         const current = rows[index].getBoundingClientRect()
         const next = rows[index + 1].getBoundingClientRect()
@@ -133,7 +137,10 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
     <form onSubmit={handleSubmit} className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_2fr] lg:gap-6">
       <Panel
         title="Users"
-        className="flex min-h-0 min-w-0 flex-col"
+        className={
+          'flex min-h-0 min-w-0 flex-col transition-colors ' +
+          (dropTarget?.list === 'users' ? 'border-accent/60 bg-accent-soft/40' : '')
+        }
         onDragOver={(event) => handleDragOver(event, { list: 'users' })}
         onDragLeave={handleDragLeave}
         onDrop={(event) => handleDrop(event, { list: 'users' })}
@@ -184,8 +191,11 @@ export function TournamentSetupScreen({ onStart, initialPlayers, onPlayersChange
 
       <Panel
         title={`Players (${players.length})`}
-        className="flex min-h-0 min-w-0 flex-col"
-        onDragOver={(event) => handleDragOver(event, { list: 'players' })}
+        className={
+          'flex min-h-0 min-w-0 flex-col transition-colors ' +
+          (dropTarget?.list === 'players' ? 'border-accent/60 bg-accent-soft/40' : '')
+        }
+        onDragOver={handlePlayersListDragOver}
         onDragLeave={handleDragLeave}
         onDrop={(event) => handleDrop(event, { list: 'players' })}
       >

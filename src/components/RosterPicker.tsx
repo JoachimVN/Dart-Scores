@@ -182,7 +182,7 @@ export function RosterRow({
         (isDropTarget ? 'border-accent ' : '') +
         (selected
           ? 'border-accent/40 bg-accent-soft hover:border-accent/70'
-          : 'border-line bg-card hover:bg-sunken')
+          : 'border-line bg-card hover:bg-sunken/50')
       }
     >
       {insertionPreview && (
