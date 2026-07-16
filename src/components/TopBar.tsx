@@ -111,6 +111,26 @@ export function TopBar({ modeLabel, settings, onSettingsChange, onOpenStats, onR
               <span>Show checkout suggestions</span>
             </label>
 
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-(--accent)"
+                checked={settings.requireTurnConfirmation}
+                onChange={(e) => onSettingsChange({ requireTurnConfirmation: e.target.checked })}
+              />
+              <span>End turns with a Done button instead of auto-advancing</span>
+            </label>
+
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-(--accent)"
+                checked={settings.showMissButton}
+                onChange={(e) => onSettingsChange({ showMissButton: e.target.checked })}
+              />
+              <span>Show a Miss button for darts that miss the board</span>
+            </label>
+
             <div className="border-t border-line pt-3">
               <Button variant="danger" size="sm" className="w-full" onClick={handleResetAllData}>
                 Reset all data

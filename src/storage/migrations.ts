@@ -187,4 +187,13 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    from: 12,
+    to: 13,
+    migrate: (data) => {
+      // New requireTurnConfirmation/showMissButton settings, both off by default.
+      const root = data as { settings?: Partial<ReturnType<typeof defaultSettings>> }
+      return { ...root, settings: { ...defaultSettings(), ...root.settings } }
+    },
+  },
 ]
