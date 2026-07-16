@@ -4,7 +4,7 @@ const MARK_RADIUS = 7
 const MARK_DOT_RADIUS = 2.5
 // Include the outer stroke, so a marker at the click area's edge is still a
 // complete circle rather than being cut off by the SVG viewBox.
-const EDGE_INSET = MARK_RADIUS + 1
+export const EDGE_INSET = MARK_RADIUS + 1
 
 interface DartMarkProps {
   x: number

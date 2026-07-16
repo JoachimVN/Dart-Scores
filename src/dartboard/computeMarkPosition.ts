@@ -1,6 +1,7 @@
 import type { Throw } from '../game/types'
 import { BOARD_RADIUS, CENTER, NUMBER_RING_OUTER } from './BoardFace'
-import { RING_RADII, SEGMENT_ORDER, type Point, polarToCartesian, wedgeAngles } from './geometry'
+import { EDGE_INSET } from './DartMark'
+import { RING_RADII, SEGMENT_ORDER, type Point, polarToCartesian, toRadians, wedgeAngles } from './geometry'
 
 /** Deterministic pseudo-random value in [-0.5, 0.5], seeded by a string - stable across re-renders. */
 function jitter(seed: string): number {
@@ -14,7 +15,7 @@ interface RingBand {
   outerFraction: number
 }
 
-function ringBandFor(ring: Throw['ring']): RingBand {
+function ringBandFor(ring: Exclude<Throw['ring'], 'miss'>): RingBand {
   switch (ring) {
     case 'bullseye':
       return { innerFraction: 0, outerFraction: RING_RADII.bullseye }
@@ -28,9 +29,25 @@ function ringBandFor(ring: Throw['ring']): RingBand {
       return { innerFraction: RING_RADII.trebleOuter, outerFraction: RING_RADII.doubleInner }
     case 'double':
       return { innerFraction: RING_RADII.doubleInner, outerFraction: RING_RADII.doubleOuter }
-    case 'miss':
-      return { innerFraction: NUMBER_RING_OUTER, outerFraction: NUMBER_RING_OUTER + 0.15 }
   }
+}
+
+/**
+ * A miss has no ring band to sit in - scatter it anywhere between the
+ * board's rim and the viewbox edge. The usable radius depends on direction
+ * (the viewbox is square, so the corners reach much further than the
+ * cardinal directions), which is exactly what keeps misses from lining up
+ * in a neat ring around the rim.
+ */
+function computeMissPosition(throwData: Throw): Point {
+  const angle = jitter(throwData.id + 'a') * 360
+  const rad = toRadians(angle)
+  // polarToCartesian maps angle -> (sin, -cos), so |sin| governs how soon the
+  // ray exits the viewbox horizontally and |cos| vertically.
+  const maxRadius = (CENTER - EDGE_INSET) / Math.max(Math.abs(Math.sin(rad)), Math.abs(Math.cos(rad)))
+  const minRadius = NUMBER_RING_OUTER * BOARD_RADIUS
+  const radius = minRadius + (0.5 + jitter(throwData.id + 'r')) * (maxRadius - minRadius)
+  return polarToCartesian(CENTER, CENTER, radius, angle)
 }
 
 /**
@@ -44,6 +61,8 @@ function ringBandFor(ring: Throw['ring']): RingBand {
  * re-renders.
  */
 export function computeMarkPosition(throwData: Throw): Point {
+  if (throwData.ring === 'miss') return computeMissPosition(throwData)
+
   const { innerFraction, outerFraction } = ringBandFor(throwData.ring)
   const radiusFraction = innerFraction + (0.5 + jitter(throwData.id + 'r') * 0.8) * (outerFraction - innerFraction)
   const radius = radiusFraction * BOARD_RADIUS
