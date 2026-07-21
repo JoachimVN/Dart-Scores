@@ -60,7 +60,7 @@ export function Dartboard({ onThrow, currentTurnDartCount, displayedThrows, disa
   }
 
   const pending = pendingClickRef.current
-  if (pending && displayedThrows.length === pending.expectedLength) {
+  if (displayedThrows.length === pending?.expectedLength) {
     const newest = displayedThrows.at(-1)
     if (newest && !marksRef.current.has(newest.id)) {
       marksRef.current.set(newest.id, pending.mark)
