@@ -29,16 +29,20 @@ interface GameResult {
   podium: PodiumEntry[]
 }
 
-function throwLabel(throwData: Throw, useDartNotation: boolean): string {
-  return useDartNotation ? throwData.label : String(throwData.value)
+function dartNotationLabel(throwData: Throw): string {
+  return throwData.label
 }
 
-function buildX01Result(game: Extract<GameState, { mode: 'x01' }>, useDartNotation: boolean): GameResult {
+function scoreLabel(throwData: Throw): string {
+  return String(throwData.value)
+}
+
+function buildX01Result(game: Extract<GameState, { mode: 'x01' }>, formatThrow: (throwData: Throw) => string): GameResult {
   const summary = buildX01GameSummary(game)
   const winnerSummary = summary.players.find((p) => p.won)
   const average = winnerSummary && winnerSummary.turnsPlayed > 0 ? winnerSummary.pointsScored / winnerSummary.turnsPlayed : 0
   const checkoutThrow = winnerSummary?.throws.at(-1)
-  const checkoutLabel = checkoutThrow ? throwLabel(checkoutThrow, useDartNotation) : '-'
+  const checkoutLabel = checkoutThrow ? formatThrow(checkoutThrow) : '-'
 
   const podium: PodiumEntry[] = [...game.players]
     .map((player) => ({ player, remaining: game.x01.playerStates.find((ps) => ps.playerId === player.id)!.remaining }))
@@ -85,7 +89,8 @@ function buildCricketResult(game: Extract<GameState, { mode: 'cricket' }>): Game
 
 export function GameOverScreen({ game, useDartNotation, onRematch, onNewGame }: Readonly<GameOverScreenProps>) {
   const winner = game.players.find((player) => player.id === winnerIdOf(game))
-  const result = game.mode === 'x01' ? buildX01Result(game, useDartNotation) : buildCricketResult(game)
+  const formatThrow = useDartNotation ? dartNotationLabel : scoreLabel
+  const result = game.mode === 'x01' ? buildX01Result(game, formatThrow) : buildCricketResult(game)
 
   return (
     <div className="flex w-full flex-col items-center gap-6">
