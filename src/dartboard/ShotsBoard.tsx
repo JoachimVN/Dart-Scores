@@ -8,7 +8,7 @@ interface ShotsBoardProps {
 }
 
 /** Read-only recap board: plots every dart in `throws` at once (see computeMarkPosition for how positions are approximated). */
-export function ShotsBoard({ throws }: ShotsBoardProps) {
+export function ShotsBoard({ throws }: Readonly<ShotsBoardProps>) {
   return (
     <BoardFace>
       {throws.map((t) => {

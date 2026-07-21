@@ -1,4 +1,5 @@
 import { generateId } from '../shared/id'
+import { shuffle } from '../shared/random'
 import type { Player } from '../game/types'
 import type { Matchup, MatchupSlot, Tournament, TournamentConfig } from './tournamentTypes'
 
@@ -244,7 +245,7 @@ export function ensureFirstLegStarter(tournament: Tournament, matchupId: string)
   if (matchup.firstLegStarterId) return tournament
   const [slotA, slotB] = matchup.players
   if (!slotA.playerId || !slotB.playerId) return tournament
-  const firstLegStarterId = Math.random() < 0.5 ? slotA.playerId : slotB.playerId
+  const firstLegStarterId = shuffle([slotA.playerId, slotB.playerId])[0]
   return replaceMatchup(tournament, location.round, location.index, { ...matchup, firstLegStarterId })
 }
 

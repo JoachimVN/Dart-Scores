@@ -66,7 +66,7 @@ export function SetupScreen({
     onStart(mode === 'x01' ? { mode, config: { startingScore, doubleOut }, players } : { mode, config: cricketConfig, players })
   }
 
-  function handleDragStart(event: DragEvent<HTMLLIElement>, id: string) {
+  function handleDragStart(event: DragEvent<HTMLElement>, id: string) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', id)
     const dragImage = event.currentTarget.cloneNode(true) as HTMLElement
@@ -150,6 +150,12 @@ export function SetupScreen({
       return event.clientY < top + height / 2
     })
     handleDragOver(event, { list: 'players', beforeId: beforeRow?.dataset.rosterId })
+  }
+
+  function insertionPreviewFor(playerId: string, index: number): 'before' | 'after' | undefined {
+    if (dropTarget?.list !== 'players') return undefined
+    if (dropTarget.beforeId === playerId) return 'before'
+    return index === players.length - 1 && !dropTarget.beforeId ? 'after' : undefined
   }
 
   return (
@@ -267,15 +273,7 @@ export function SetupScreen({
               onRename={(name) => renameUser(player.id, name)}
               draggable
               isDragging={draggedId === player.id}
-              insertionPreview={
-                dropTarget?.list === 'players'
-                  ? dropTarget.beforeId === player.id
-                    ? 'before'
-                    : index === players.length - 1 && !dropTarget.beforeId
-                      ? 'after'
-                      : undefined
-                  : undefined
-              }
+              insertionPreview={insertionPreviewFor(player.id, index)}
               onDragStart={(event) => handleDragStart(event, player.id)}
               onDragEnd={handleDragEnd}
             />

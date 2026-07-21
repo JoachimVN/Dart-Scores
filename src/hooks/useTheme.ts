@@ -12,7 +12,7 @@ function resolveTheme(theme: Theme): 'light' | 'dark' {
 export function useTheme(theme: Theme) {
   useEffect(() => {
     const apply = () => {
-      document.documentElement.setAttribute('data-theme', resolveTheme(theme))
+      document.documentElement.dataset.theme = resolveTheme(theme)
     }
     apply()
 

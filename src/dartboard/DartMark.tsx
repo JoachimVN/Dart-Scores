@@ -14,7 +14,7 @@ interface DartMarkProps {
 }
 
 /** Visual for a single dart landing spot, shared by the live click markers and the read-only shots recap. */
-export function DartMark({ x, y, faded }: DartMarkProps) {
+export function DartMark({ x, y, faded }: Readonly<DartMarkProps>) {
   const visibleX = Math.min(VIEWBOX_SIZE - EDGE_INSET, Math.max(EDGE_INSET, x))
   const visibleY = Math.min(VIEWBOX_SIZE - EDGE_INSET, Math.max(EDGE_INSET, y))
 

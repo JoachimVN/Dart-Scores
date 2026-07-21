@@ -8,7 +8,12 @@ interface TurnPanelProps {
   playerName: string
 }
 
-export function TurnPanel({ throws, useDartNotation, playerName }: TurnPanelProps) {
+function labelFor(throwData: Throw | undefined, useDartNotation: boolean): string {
+  if (!throwData) return '-'
+  return useDartNotation ? throwData.label : String(throwData.value)
+}
+
+export function TurnPanel({ throws, useDartNotation, playerName }: Readonly<TurnPanelProps>) {
   return (
     <div className="flex flex-col gap-[0.2em]">
       <span className="max-w-[10em] truncate text-[0.75em] font-semibold uppercase tracking-wide text-ink-muted">
@@ -17,7 +22,7 @@ export function TurnPanel({ throws, useDartNotation, playerName }: TurnPanelProp
       <div className="flex gap-[0.3em]">
         {[0, 1, 2].map((i) => {
           const dart = throws[i]
-          const label = dart ? (useDartNotation ? dart.label : String(dart.value)) : '-'
+          const label = labelFor(dart, useDartNotation)
           return <ThrowBadge key={i} label={label} empty={!dart} />
         })}
       </div>
