@@ -30,7 +30,7 @@ interface BoardFaceProps {
  * clickable Dartboard and the read-only ShotsBoard recap - so the ~100 lines
  * of wedge-rendering math and colors live in exactly one place.
  */
-export function BoardFace({ svgRef, onClick, children }: BoardFaceProps) {
+export function BoardFace({ svgRef, onClick, children }: Readonly<BoardFaceProps>) {
   return (
     <svg
       ref={svgRef}

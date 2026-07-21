@@ -85,11 +85,11 @@ interface RosterRowProps {
   readonly isDropTarget?: boolean
   /** Paints an insertion line over this row without changing list layout. */
   readonly insertionPreview?: 'before' | 'after'
-  readonly onDragStart?: (event: DragEvent<HTMLLIElement>) => void
+  readonly onDragStart?: (event: DragEvent<HTMLElement>) => void
   readonly onDragEnd?: () => void
-  readonly onDragOver?: (event: DragEvent<HTMLLIElement>) => void
-  readonly onDragLeave?: (event: DragEvent<HTMLLIElement>) => void
-  readonly onDrop?: (event: DragEvent<HTMLLIElement>) => void
+  readonly onDragOver?: (event: DragEvent<HTMLElement>) => void
+  readonly onDragLeave?: (event: DragEvent<HTMLElement>) => void
+  readonly onDrop?: (event: DragEvent<HTMLElement>) => void
 }
 
 /** A name that moves the person to the other list when clicked. */
@@ -163,18 +163,6 @@ export function RosterRow({
   return (
     <li
       data-roster-id={id}
-      draggable={draggable}
-      onDragStart={(event) => {
-        draggedSinceLastClick.current = true
-        onDragStart?.(event)
-      }}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onClick={handleMove}
-      aria-roledescription={draggable ? 'draggable user' : undefined}
-      aria-label={draggable ? `${name}. Drag to move or reorder.` : undefined}
       className={
         'relative flex items-center justify-between gap-2 rounded-(--radius-md) border px-3 py-2.5 transition-[background-color,border-color,opacity,transform] ' +
         (draggable ? 'cursor-pointer ' : '') +
@@ -196,7 +184,18 @@ export function RosterRow({
       )}
       <button
         type="button"
+        draggable={draggable}
+        onDragStart={(event) => {
+          draggedSinceLastClick.current = true
+          onDragStart?.(event)
+        }}
+        onDragEnd={onDragEnd}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
         onClick={handleMove}
+        aria-roledescription={draggable ? 'draggable user' : undefined}
+        aria-label={draggable ? `${name}. Drag to move or reorder.` : undefined}
         className="min-w-0 flex-1 cursor-pointer truncate text-left font-medium outline-none focus-visible:underline"
       >
         {name}

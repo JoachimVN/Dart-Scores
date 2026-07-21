@@ -1,8 +1,17 @@
+function randomIndex(upperExclusive: number): number {
+  const range = 2 ** 32
+  const maximumUnbiasedValue = range - (range % upperExclusive)
+  const value = new Uint32Array(1)
+  do crypto.getRandomValues(value)
+  while (value[0] >= maximumUnbiasedValue)
+  return value[0] % upperExclusive
+}
+
 /** Fisher-Yates shuffle; does not mutate the input. */
 export function shuffle<T>(items: T[]): T[] {
   const result = [...items]
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = randomIndex(i + 1)
     ;[result[i], result[j]] = [result[j], result[i]]
   }
   return result

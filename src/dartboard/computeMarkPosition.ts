@@ -6,7 +6,7 @@ import { RING_RADII, SEGMENT_ORDER, type Point, polarToCartesian, toRadians, wed
 /** Deterministic pseudo-random value in [-0.5, 0.5], seeded by a string - stable across re-renders. */
 function jitter(seed: string): number {
   let h = 0
-  for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) | 0
+  for (let i = 0; i < seed.length; i++) h = Math.trunc(Math.imul(h, 31) + (seed.codePointAt(i) ?? 0))
   return ((h >>> 0) % 10000) / 10000 - 0.5
 }
 

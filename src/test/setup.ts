@@ -5,7 +5,7 @@
  * in tests. Replace it with a minimal in-memory Storage polyfill.
  */
 class MemoryStorage implements Storage {
-  private store = new Map<string, string>()
+  private readonly store = new Map<string, string>()
 
   get length() {
     return this.store.size

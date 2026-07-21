@@ -7,7 +7,7 @@ import { RING_RADII, normalizeAngle, segmentValueForAngle } from './geometry'
  * convention used throughout geometry.ts.
  */
 export function toPolar(dx: number, dy: number): { radius: number; angleDeg: number } {
-  const radius = Math.sqrt(dx * dx + dy * dy)
+  const radius = Math.hypot(dx, dy)
   const angleDeg = normalizeAngle((Math.atan2(dx, -dy) * 180) / Math.PI)
   return { radius, angleDeg }
 }

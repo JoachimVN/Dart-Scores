@@ -51,16 +51,18 @@ function buildX01ViewModel(
   // A held bust shows the rolled-back score (what the player will keep), not
   // the negative/dead live total the busting dart would imply.
   const pendingBust = isX01PendingBust(x01)
+  let bustedPlayerId: string | null = null
+  if (pendingBust) {
+    bustedPlayerId = engineCurrentPlayerId
+  } else if (isBetweenTurns && lastTurn?.bust && !lastTurnDismissed) {
+    bustedPlayerId = lastTurn.playerId
+  }
 
   return {
     engineCurrentPlayerId,
     currentTurnThrows: x01.currentTurnThrows,
     lastTurn,
-    bustedPlayerId: pendingBust
-      ? engineCurrentPlayerId
-      : isBetweenTurns && lastTurn?.bust && !lastTurnDismissed
-        ? lastTurn.playerId
-        : null,
+    bustedPlayerId,
     turnPending: isX01TurnPending(x01),
     valueFor: (playerId) => {
       const playerState = x01.playerStates.find((ps) => ps.playerId === playerId)!
@@ -163,7 +165,7 @@ export function PlayScreen({
   useDartNotation,
   showCheckoutSuggestions,
   showMissButton,
-}: PlayScreenProps) {
+}: Readonly<PlayScreenProps>) {
   useWakeLock()
   // The turn most recently committed by an explicit Done click, identified by
   // its first throw's id. The lingering "just played" display below only

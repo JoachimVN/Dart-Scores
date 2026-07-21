@@ -33,7 +33,7 @@ function isFinishingRing(ring: CandidateRing): boolean {
 
 /** Same darts in a different order aren't a meaningfully different suggestion. */
 function comboSignature(combo: string[]): string {
-  return [...combo].sort().join(',')
+  return [...combo].sort((left, right) => left.localeCompare(right)).join(',')
 }
 
 function findLastDartFinishes(remaining: number, doubleOut: boolean, rawLimit: number): string[][] {
